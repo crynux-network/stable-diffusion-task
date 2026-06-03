@@ -110,14 +110,12 @@ def check_and_download_hf_pipeline(
     proxy = kwargs.pop("proxy")
 
     def _download(call_args):
-        with requests_proxy_session(proxy) as proxies:
-            call_args["proxies"] = proxies
+        with requests_proxy_session(proxy):
             DiffusionPipeline.download(model_name, **call_args)
 
     try:
         call_args = {
             "cache_dir": hf_model_cache_dir,
-            "resume_download": True,
             "variant": variant,
         }
         _download(call_args)
@@ -125,7 +123,6 @@ def check_and_download_hf_pipeline(
         if "no variant default" in str(e):
             call_args = {
                 "cache_dir": hf_model_cache_dir,
-                "resume_download": True,
             }
             _download(call_args)
         else:
@@ -146,12 +143,10 @@ def check_and_download_hf_model(
     log("Check and download the Huggingface model file: " + model_name)
     weight_file_name = ""
 
-    with requests_proxy_session(proxy) as proxies:
+    with requests_proxy_session(proxy):
         # download the config file
         call_args = {
             "cache_dir": hf_model_cache_dir,
-            "resume_download": True,
-            "proxies": proxies,
         }
         if config_loader is not None:
             config_loader(model_name, **call_args)
