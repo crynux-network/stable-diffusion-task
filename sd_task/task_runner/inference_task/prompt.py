@@ -1,6 +1,7 @@
 import re
 
 from compel import Compel, ReturnedEmbeddingsType
+from compel.convenience_wrappers import CompelForSDXL
 
 
 def add_prompt_pipeline_call_args(call_args, pipeline, prompt: str, negative_prompt: str):
@@ -13,20 +14,12 @@ def add_prompt_pipeline_call_args(call_args, pipeline, prompt: str, negative_pro
 
 
 def add_prompt_pipeline_sdxl_call_args(call_args, pipeline, prompt: str, negative_prompt: str):
-    compel = Compel(
-        tokenizer=[pipeline.tokenizer, pipeline.tokenizer_2],
-        text_encoder=[pipeline.text_encoder, pipeline.text_encoder_2],
-        returned_embeddings_type=ReturnedEmbeddingsType.PENULTIMATE_HIDDEN_STATES_NON_NORMALIZED,
-        requires_pooled=[False, True],
-        truncate_long_prompts=False,
-    )
+    conditioning = CompelForSDXL(pipeline)(prompt, negative_prompt=negative_prompt)
 
-    conditioning, pooled = compel([prompt, negative_prompt])
-
-    call_args["prompt_embeds"] = conditioning[0:1]
-    call_args["pooled_prompt_embeds"] = pooled[0:1]
-    call_args["negative_prompt_embeds"] = conditioning[1:2]
-    call_args["negative_pooled_prompt_embeds"] = pooled[1:2]
+    call_args["prompt_embeds"] = conditioning.embeds
+    call_args["pooled_prompt_embeds"] = conditioning.pooled_embeds
+    call_args["negative_prompt_embeds"] = conditioning.negative_embeds
+    call_args["negative_pooled_prompt_embeds"] = conditioning.negative_pooled_embeds
 
 
 def add_prompt_refiner_sdxl_call_args(call_args, refiner, prompt: str, negative_prompt: str):

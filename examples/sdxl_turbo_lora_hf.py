@@ -9,7 +9,8 @@ if __name__ == '__main__':
     args = {
         "version": "2.0.0",
         "base_model": {
-            "name": "stabilityai/sdxl-turbo"
+            "name": "stabilityai/sdxl-turbo",
+            "variant": "fp16"
         },
         "scheduler": {
             "method": "EulerAncestralDiscreteScheduler",

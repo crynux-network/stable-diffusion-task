@@ -7,19 +7,21 @@ name = "sd_task"
 authors = [{ name = "lukew", email = "lukew@crynux.ai" }]
 description = "A general framework to define and execute the Stable Diffusion task."
 readme = "README.md"
-requires-python = ">=3.7"
+requires-python = ">=3.10"
 classifiers = ["Programming Language :: Python :: 3"]
 version = "3.0.0"
 dependencies = [
     "pydantic>=2.4.2",
     "pydantic-settings>=2.0.3",
-    "PyYAML",
+    "PyYAML>=6.0.2",
     "annotated-types>=0.6.0",
     "Pillow",
     "controlnet-aux>=0.0.7",
     "mediapipe>=0.10.7",
-    "diffusers>=0.21.2",
-    "compel>=2.0.2",
+    "diffusers>=0.38.0",
+    "compel>=2.4.0",
+    "transformers>=5.2.0,<6",
+    "peft>=0.17.0",
     "torch>=1.4",
     "torchaudio",
     "torchvision",
