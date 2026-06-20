@@ -212,19 +212,23 @@ def run_inference_task(
     if config is None:
         config = get_config()
 
+    if config.deterministic:
+        os.environ["CUDA_LAUNCH_BLOCKING"] = "1"
+        os.environ["CUBLAS_WORKSPACE_CONFIG"] = ":16:8"
+        torch.use_deterministic_algorithms(True)
+
     # Get GPU information
     gpu_info = utils.get_gpu_info()
     if gpu_info:
         log(f"GPU: {gpu_info['gpu_name']} ({gpu_info['gpu_memory_gb']}GB)")
 
     if config.deterministic and utils.get_accelerator() == "cuda":
-        # Use deterministic algorithms for reproducibility
-        os.environ["CUDA_LAUNCH_BLOCKING"] = "1"
-        os.environ["CUBLAS_WORKSPACE_CONFIG"] = ":16:8"
-        torch.use_deterministic_algorithms(True)
+        # Use deterministic CUDA backends for reproducibility
         torch.backends.cudnn.deterministic = True
         torch.backends.cudnn.benchmark = False
-        torch.backends.cuda.matmul.allow_tf32 = False
+        torch.backends.fp32_precision = "ieee"
+        torch.backends.cuda.matmul.fp32_precision = "ieee"
+        torch.backends.cudnn.fp32_precision = "ieee"
 
     log("Task is started")
 
