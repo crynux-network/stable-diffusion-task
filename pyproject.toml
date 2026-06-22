@@ -9,7 +9,7 @@ description = "A general framework to define and execute the Stable Diffusion ta
 readme = "README.md"
 requires-python = ">=3.10"
 classifiers = ["Programming Language :: Python :: 3"]
-version = "3.0.0"
+version = "3.2.0"
 dependencies = [
     "pydantic>=2.4.2",
     "pydantic-settings>=2.0.3",
