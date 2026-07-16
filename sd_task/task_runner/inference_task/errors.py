@@ -16,8 +16,10 @@ from sd_task import utils
 __all__ = [
     "wrap_download_error",
     "wrap_execution_error",
+    "wrap_model_load_error",
     "ModelInvalid",
     "ModelDownloadError",
+    "ModelNotDownloaded",
     "TaskExecutionError",
     "TaskVersionNotSupported",
 ]
@@ -36,6 +38,11 @@ class ModelInvalid(ValueError):
 class ModelDownloadError(ValueError):
     def __str__(self) -> str:
         return "Task model download error"
+
+
+class ModelNotDownloaded(ValueError):
+    def __str__(self) -> str:
+        return "Task model not downloaded"
 
 
 class TaskExecutionError(ValueError):
@@ -120,3 +127,26 @@ def wrap_execution_error():
         yield from _wrap_macos_execution_error()
     else:
         yield from _wrap_cuda_execution_error()
+
+
+# Wraps model loading in local_files_only mode: a load failure caused by a
+# local cache miss is reported as ModelNotDownloaded, everything else keeps
+# the wrap_execution_error classification.
+@contextmanager
+def wrap_model_load_error(local_files_only: bool = False):
+    if not local_files_only:
+        with wrap_execution_error():
+            yield
+        return
+
+    try:
+        yield
+    except ModelNotDownloaded:
+        raise
+    except Exception as e:
+        if match_exception(e, EnvironmentError) or match_exception(
+            e, LocalEntryNotFoundError
+        ):
+            raise ModelNotDownloaded from e
+        with wrap_execution_error():
+            raise

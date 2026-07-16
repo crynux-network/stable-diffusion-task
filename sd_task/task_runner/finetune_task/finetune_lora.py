@@ -32,6 +32,7 @@ from sd_task import utils
 from sd_task.cache import ModelCache
 from sd_task.config import Config, get_config
 from sd_task.task_args import FinetuneLoraTaskArgs
+from sd_task.task_runner.inference_task.errors import wrap_model_load_error
 
 from .download_url_dataset import download_dataset_from_url
 
@@ -104,39 +105,47 @@ def run_finetune_lora_task(
         weight_dtype = torch.bfloat16
 
     def load_model():
-        noise_scheduler: DDPMScheduler = DDPMScheduler.from_pretrained(
-            args.model.name, subfolder="scheduler", cache_dir=cache_dir
-        )
-        tokenizer = CLIPTokenizer.from_pretrained(
-            args.model.name,
-            subfolder="tokenizer",
-            revision=args.model.revision,
-            cache_dir=cache_dir,
-        )
-        tokenizer = cast(CLIPTokenizer, tokenizer)
-        text_encoder = CLIPTextModel.from_pretrained(
-            args.model.name,
-            subfolder="text_encoder",
-            revision=args.model.revision,
-            cache_dir=cache_dir,
-        )
-        text_encoder = cast(CLIPTextModel, text_encoder)
-        vae = AutoencoderKL.from_pretrained(
-            args.model.name,
-            subfolder="vae",
-            revision=args.model.revision,
-            variant=args.model.variant,
-            cache_dir=cache_dir,
-        )
-        vae = cast(CLIPTextModel, vae)
-        unet = UNet2DConditionModel.from_pretrained(
-            args.model.name,
-            subfolder="unet",
-            revision=args.model.revision,
-            variant=args.model.variant,
-            cache_dir=cache_dir,
-        )
-        unet = cast(UNet2DConditionModel, unet)
+        with wrap_model_load_error(config.local_files_only):
+            noise_scheduler: DDPMScheduler = DDPMScheduler.from_pretrained(
+                args.model.name,
+                subfolder="scheduler",
+                cache_dir=cache_dir,
+                local_files_only=config.local_files_only,
+            )
+            tokenizer = CLIPTokenizer.from_pretrained(
+                args.model.name,
+                subfolder="tokenizer",
+                revision=args.model.revision,
+                cache_dir=cache_dir,
+                local_files_only=config.local_files_only,
+            )
+            tokenizer = cast(CLIPTokenizer, tokenizer)
+            text_encoder = CLIPTextModel.from_pretrained(
+                args.model.name,
+                subfolder="text_encoder",
+                revision=args.model.revision,
+                cache_dir=cache_dir,
+                local_files_only=config.local_files_only,
+            )
+            text_encoder = cast(CLIPTextModel, text_encoder)
+            vae = AutoencoderKL.from_pretrained(
+                args.model.name,
+                subfolder="vae",
+                revision=args.model.revision,
+                variant=args.model.variant,
+                cache_dir=cache_dir,
+                local_files_only=config.local_files_only,
+            )
+            vae = cast(CLIPTextModel, vae)
+            unet = UNet2DConditionModel.from_pretrained(
+                args.model.name,
+                subfolder="unet",
+                revision=args.model.revision,
+                variant=args.model.variant,
+                cache_dir=cache_dir,
+                local_files_only=config.local_files_only,
+            )
+            unet = cast(UNet2DConditionModel, unet)
         # freeze parameters of models to save more memory
         unet.requires_grad_(False)
         vae.requires_grad_(False)
@@ -164,14 +173,16 @@ def run_finetune_lora_task(
             # only upcast trainable parameters (LoRA) into fp32
             cast_training_params(unet, dtype=torch.float32)
 
-        pipeline = DiffusionPipeline.from_pretrained(
-            args.model.name,
-            safety_checker=None,
-            revision=args.model.revision,
-            variant=args.model.variant,
-            torch_dtype=weight_dtype,
-            cache_dir=cache_dir,
-        )
+        with wrap_model_load_error(config.local_files_only):
+            pipeline = DiffusionPipeline.from_pretrained(
+                args.model.name,
+                safety_checker=None,
+                revision=args.model.revision,
+                variant=args.model.variant,
+                torch_dtype=weight_dtype,
+                cache_dir=cache_dir,
+                local_files_only=config.local_files_only,
+            )
         pipeline = pipeline.to(accelerator.device)
         return noise_scheduler, tokenizer, text_encoder, vae, unet, pipeline
 

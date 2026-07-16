@@ -19,9 +19,9 @@ from sd_task.task_args.inference_task import (BaseModelArgs, ControlnetArgs,
 from sd_task.log import log
 
 from .controlnet import add_controlnet_pipeline_call_args
-from .download_model import check_and_prepare_models
+from .download_model import check_and_prepare_models, resolve_models_from_cache
 from .errors import (TaskVersionNotSupported, wrap_download_error,
-                     wrap_execution_error)
+                     wrap_execution_error, wrap_model_load_error)
 from .key import generate_model_key
 from .prompt import (add_prompt_pipeline_call_args,
                      add_prompt_refiner_sdxl_call_args)
@@ -239,19 +239,27 @@ def run_inference_task(
     model_key = generate_model_key(args)
 
     def model_loader():
-        log("Check the model cache and download the models")
-
-        with wrap_download_error():
-            check_and_prepare_models(
+        if config.local_files_only:
+            log("Resolve the models from the local cache only")
+            resolve_models_from_cache(
                 args,
                 external_model_cache_dir=config.data_dir.models.external,
                 hf_model_cache_dir=config.data_dir.models.huggingface,
-                proxy=config.proxy,
             )
+        else:
+            log("Check the model cache and download the models")
 
-        log("All the required models are downloaded")
+            with wrap_download_error():
+                check_and_prepare_models(
+                    args,
+                    external_model_cache_dir=config.data_dir.models.external,
+                    hf_model_cache_dir=config.data_dir.models.huggingface,
+                    proxy=config.proxy,
+                )
 
-        with wrap_execution_error():
+            log("All the required models are downloaded")
+
+        with wrap_model_load_error(config.local_files_only):
             pipeline, refiner = prepare_pipeline(
                 cache_dir=config.data_dir.models.huggingface, args=args
             )

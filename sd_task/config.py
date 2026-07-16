@@ -42,6 +42,7 @@ class Config(BaseSettings):
     preloaded_models: PreloadedModelsConfig = PreloadedModelsConfig()
     proxy: ProxyConfig | None = None
     deterministic: bool = True
+    local_files_only: bool = False
 
     model_config = SettingsConfigDict(
         env_nested_delimiter="__",

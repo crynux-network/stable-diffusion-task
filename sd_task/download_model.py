@@ -42,12 +42,9 @@ def check_and_download_model_by_name(
         )
 
 
-def check_and_download_external_model(
-    model_name: str, external_cache_dir: str, proxy: ProxyConfig | None
+def get_external_model_path(
+    model_name: str, external_cache_dir: str
 ) -> tuple[str, str]:
-
-    log("Check and download the external model file: " + model_name)
-
     weight_file_name = "model.safetensors"
 
     m = hashlib.sha256()
@@ -56,6 +53,19 @@ def check_and_download_external_model(
 
     model_folder = os.path.join(external_cache_dir, url_hash)
     model_file = os.path.join(model_folder, weight_file_name)
+    return model_file, weight_file_name
+
+
+def check_and_download_external_model(
+    model_name: str, external_cache_dir: str, proxy: ProxyConfig | None
+) -> tuple[str, str]:
+
+    log("Check and download the external model file: " + model_name)
+
+    model_file, weight_file_name = get_external_model_path(
+        model_name, external_cache_dir
+    )
+    model_folder = os.path.dirname(model_file)
 
     log("The model file will be saved as: " + model_file)
 
@@ -67,10 +77,11 @@ def check_and_download_external_model(
     else:
         os.makedirs(model_folder, mode=0o755, exist_ok=True)
 
-    # Download the model file
-    model_file = os.path.join(model_folder, "model.safetensors")
-
     log("Model file not cached locally. Start the download...")
+
+    # Stream to a temp file and atomically rename it to the final path, so a
+    # killed download can never leave a partial file at the cached location
+    temp_file = model_file + ".downloading"
 
     try:
         with requests_proxy_session(proxy) as proxies:
@@ -80,25 +91,33 @@ def check_and_download_external_model(
 
             total_bytes = int(resp.headers.get("content-length", 0))
 
-            with tqdm.wrapattr(
-                open(model_file, "wb"),
-                "write",
-                miniters=1,
-                desc=model_file,
-                total=total_bytes,
-            ) as f_out:
-                for chunk in resp.iter_content(chunk_size=1024):
-                    if chunk:
-                        f_out.write(chunk)
-                f_out.flush()
+            written_bytes = 0
+            with open(temp_file, "wb") as f:
+                with tqdm.wrapattr(
+                    f,
+                    "write",
+                    miniters=1,
+                    desc=model_file,
+                    total=total_bytes,
+                ) as f_out:
+                    for chunk in resp.iter_content(chunk_size=1024):
+                        if chunk:
+                            f_out.write(chunk)
+                            written_bytes += len(chunk)
+                    f_out.flush()
+
+            if total_bytes > 0 and written_bytes != total_bytes:
+                raise IOError(
+                    f"Incomplete download of {model_name}: "
+                    f"got {written_bytes} bytes, expected {total_bytes} bytes"
+                )
+
+        os.replace(temp_file, model_file)
 
         return model_folder, weight_file_name
-    except Exception as e:
-        # delete the broken file if download failed
-        if os.path.isfile(model_file):
-            os.remove(model_file)
-
-        raise e
+    finally:
+        if os.path.isfile(temp_file):
+            os.remove(temp_file)
 
 
 def check_and_download_hf_pipeline(
@@ -269,9 +288,16 @@ def best_guess_weight_name(
 ) -> str | None:
 
     files_in_repo = model_info(pretrained_model_name_or_path_or_dict).siblings
-    targeted_files = [
-        f.rfilename for f in files_in_repo if f.rfilename.endswith(file_extension)
-    ]
+    filenames = [f.rfilename for f in files_in_repo]
+    return _pick_weight_name(
+        filenames, file_extension, pretrained_model_name_or_path_or_dict
+    )
+
+
+def _pick_weight_name(
+    filenames: list[str], file_extension: str, model_name: str
+) -> str | None:
+    targeted_files = [f for f in filenames if f.endswith(file_extension)]
 
     if len(targeted_files) == 0:
         return
@@ -288,7 +314,35 @@ def best_guess_weight_name(
         raise ValueError(
             f"Provided path contains more than one weights file in the {file_extension} format. Either specify "
             f"`weight_name` in `load_lora_weights` or make sure there's only one  `.safetensors` or `.bin` file in  "
-            f"{pretrained_model_name_or_path_or_dict}."
+            f"{model_name}."
         )
     weight_name = targeted_files[0]
+    return weight_name
+
+
+def _local_snapshot_files(model_name: str, hf_model_cache_dir: str) -> list[str]:
+    from huggingface_hub import scan_cache_dir
+
+    try:
+        cache_info = scan_cache_dir(hf_model_cache_dir)
+    except Exception:
+        return []
+
+    for repo in cache_info.repos:
+        if repo.repo_id == model_name and repo.repo_type == "model":
+            revisions = sorted(
+                repo.revisions, key=lambda r: r.last_modified or 0, reverse=True
+            )
+            for rev in revisions:
+                return [f.file_name for f in rev.files]
+    return []
+
+
+def best_guess_local_weight_name(
+    model_name: str, hf_model_cache_dir: str
+) -> str | None:
+    filenames = _local_snapshot_files(model_name, hf_model_cache_dir)
+    weight_name = _pick_weight_name(filenames, ".safetensors", model_name)
+    if weight_name is None:
+        weight_name = _pick_weight_name(filenames, ".bin", model_name)
     return weight_name
