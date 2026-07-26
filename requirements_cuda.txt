@@ -12,7 +12,7 @@ Pillow==10.0.1
 controlnet-aux==0.0.7
 diffusers==0.38.0
 compel==2.4.0
-transformers==5.2.0
+transformers==5.14.1
 mediapipe==0.10.35
 validators==0.22.0
 tqdm==4.66.5
@@ -24,5 +24,5 @@ datasets==3.1.0
 onnxruntime==1.20.0
 onnxruntime-gpu==1.20.0
 rembg[gpu]==2.0.58
-huggingface_hub==1.3.0
+huggingface_hub==1.24.0
 numba==0.60.0

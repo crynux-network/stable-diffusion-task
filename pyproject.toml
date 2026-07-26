@@ -20,7 +20,7 @@ dependencies = [
     "mediapipe>=0.10.35",
     "diffusers>=0.38.0",
     "compel>=2.4.0",
-    "transformers>=5.2.0,<6",
+    "transformers>=5.14.1,<6",
     "peft>=0.17.0",
     "torch>=2.12",
     "torchvision",
