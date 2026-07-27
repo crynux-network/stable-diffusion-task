@@ -1,12 +1,13 @@
 import os
 import random
-from typing import Any, Dict, List
+from typing import Any, Callable, Dict, List
 
 import numpy as np
 import torch
 from diffusers import (AutoencoderKL, AutoPipelineForText2Image,
                        ControlNetModel, DiffusionPipeline,
                        UNet2DConditionModel)
+from huggingface_hub.errors import IncompleteSnapshotError
 from packaging.version import Version
 from PIL import Image
 
@@ -48,6 +49,20 @@ def get_pipeline_init_args(
     return init_args
 
 
+# Temporary workaround for huggingface/diffusers#14117 (fixed in #14118, not
+# released on PyPI as of diffusers 0.39). Offline from_pretrained skips the
+# variant allow_patterns used during download, so huggingface_hub>=1.22 raises
+# IncompleteSnapshotError on a valid filtered cache. Reload from snapshot_path
+# (huggingface_hub#4500). Remove after bumping to a diffusers release that
+# includes #14118 (expected 0.40+).
+def _from_pretrained_cached(loader: Callable[..., Any], model_id: str, **kwargs):
+    try:
+        return loader(model_id, **kwargs)
+    except IncompleteSnapshotError as e:
+        path_kwargs = {k: v for k, v in kwargs.items() if k != "cache_dir"}
+        return loader(e.snapshot_path, **path_kwargs)
+
+
 def prepare_pipeline(cache_dir: str, args: InferenceTaskArgs):
     assert isinstance(args.base_model, BaseModelArgs)
     torch_dtype = None
@@ -64,69 +79,38 @@ def prepare_pipeline(cache_dir: str, args: InferenceTaskArgs):
     acc_device = utils.get_accelerator()
 
     if args.controlnet is not None and args.controlnet.model != "":
-        controlnet_model = None
-        try:
-            controlnet_model = ControlNetModel.from_pretrained(
-                args.controlnet.model,
-                cache_dir=cache_dir,
-                local_files_only=True,
-            )
-        except EnvironmentError:
-            pass
-
-        if controlnet_model is None:
-            controlnet_model = ControlNetModel.from_pretrained(
-                args.controlnet.model,
-                cache_dir=cache_dir,
-                local_files_only=True,
-            )
-
+        controlnet_model = _from_pretrained_cached(
+            ControlNetModel.from_pretrained,
+            args.controlnet.model,
+            cache_dir=cache_dir,
+            local_files_only=True,
+        )
         pipeline_args["controlnet"] = controlnet_model.to(acc_device)
 
     if args.unet is not None and args.unet != "":
-        unet_model = None
-        try:
-            unet_model = UNet2DConditionModel.from_pretrained(
-                args.unet,
-                cache_dir=cache_dir,
-                local_files_only=True,
-            )
-        except EnvironmentError:
-            pass
-
-        if unet_model is None:
-            unet_model = UNet2DConditionModel.from_pretrained(
-                args.unet,
-                cache_dir=cache_dir,
-                local_files_only=True,
-            )
-
+        unet_model = _from_pretrained_cached(
+            UNet2DConditionModel.from_pretrained,
+            args.unet,
+            cache_dir=cache_dir,
+            local_files_only=True,
+        )
         pipeline_args["unet"] = unet_model
 
-    pipeline = AutoPipelineForText2Image.from_pretrained(
-        args.base_model.name, **pipeline_args
+    pipeline = _from_pretrained_cached(
+        AutoPipelineForText2Image.from_pretrained,
+        args.base_model.name,
+        **pipeline_args,
     )
 
     add_scheduler_pipeline_args(pipeline, args.scheduler)
 
     if args.vae != "":
-        vae_model = None
-        try:
-            vae_model = AutoencoderKL.from_pretrained(
-                args.vae,
-                cache_dir=cache_dir,
-                local_files_only=True,
-            )
-        except EnvironmentError:
-            pass
-
-        if vae_model is None:
-            vae_model = AutoencoderKL.from_pretrained(
-                args.vae,
-                cache_dir=cache_dir,
-                local_files_only=True,
-            )
-
+        vae_model = _from_pretrained_cached(
+            AutoencoderKL.from_pretrained,
+            args.vae,
+            cache_dir=cache_dir,
+            local_files_only=True,
+        )
         pipeline.vae = vae_model.to(acc_device)
 
     if args.lora is not None and args.lora.model != "":
@@ -156,8 +140,10 @@ def prepare_pipeline(cache_dir: str, args: InferenceTaskArgs):
         refiner_init_args["tokenizer_2"] = pipeline.tokenizer_2
         refiner_init_args["text_encoder_2"] = pipeline.text_encoder_2
         refiner_init_args["vae"] = pipeline.vae
-        refiner_model = DiffusionPipeline.from_pretrained(
-            args.refiner.model, **refiner_init_args
+        refiner_model = _from_pretrained_cached(
+            DiffusionPipeline.from_pretrained,
+            args.refiner.model,
+            **refiner_init_args,
         ).to(acc_device)
 
     return pipeline, refiner_model

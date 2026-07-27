@@ -8,6 +8,8 @@ PyYAML==6.0.2
 annotated-types==0.6.0
 Pillow==10.0.1
 controlnet-aux==0.0.7
+# Bump when a release includes huggingface/diffusers#14118 (expected 0.40+),
+# then remove _from_pretrained_cached IncompleteSnapshotError shim.
 diffusers==0.38.0
 compel==2.4.0
 transformers==5.14.1
