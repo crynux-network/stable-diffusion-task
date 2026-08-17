@@ -1,36 +1,51 @@
 import os
 import random
-from typing import Any, Callable, Dict, List
+from collections.abc import Callable
+from typing import Any
 
 import numpy as np
 import torch
-from diffusers import (AutoencoderKL, AutoPipelineForText2Image,
-                       ControlNetModel, DiffusionPipeline,
-                       UNet2DConditionModel)
+from diffusers import (
+    AutoencoderKL,
+    AutoPipelineForText2Image,
+    ControlNetModel,
+    DiffusionPipeline,
+    UNet2DConditionModel,
+)
 from huggingface_hub.errors import IncompleteSnapshotError
 from packaging.version import Version
-from PIL import Image
 
 from sd_task import utils, version
 from sd_task.cache import ModelCache
 from sd_task.config import Config, get_config
-from sd_task.task_args.inference_task import (BaseModelArgs, ControlnetArgs,
-                                              InferenceTaskArgs, RefinerArgs,
-                                              TaskConfig)
 from sd_task.log import log
+from sd_task.task_args.inference_task import (
+    BaseModelArgs,
+    ControlnetArgs,
+    InferenceTaskArgs,
+    RefinerArgs,
+    TaskConfig,
+)
 
 from .controlnet import add_controlnet_pipeline_call_args
 from .download_model import check_and_prepare_models, resolve_models_from_cache
-from .errors import (TaskVersionNotSupported, wrap_download_error,
-                     wrap_execution_error, wrap_model_load_error)
+from .errors import (
+    TaskVersionNotSupported,
+    wrap_download_error,
+    wrap_execution_error,
+    wrap_model_load_error,
+)
 from .key import generate_model_key
-from .prompt import (add_prompt_pipeline_call_args,
-                     add_prompt_refiner_sdxl_call_args)
+from .prompt import add_prompt_pipeline_call_args, add_prompt_refiner_sdxl_call_args
+from .result import InferenceTaskResult, resolve_execution_dtype
 from .scheduler import add_scheduler_pipeline_args
 
 
 def get_pipeline_init_args(
-    cache_dir: str, safety_checker: bool = True, torch_dtype: torch.dtype | None = None, variant: str | None = None
+    cache_dir: str,
+    safety_checker: bool = True,
+    torch_dtype: torch.dtype | None = None,
+    variant: str | None = None,
 ):
     init_args = {
         "torch_dtype": torch_dtype,
@@ -156,8 +171,8 @@ def get_pipeline_call_args(
     task_config: TaskConfig,
     controlnet: ControlnetArgs | None = None,
     refiner: RefinerArgs | None = None,
-) -> Dict[str, Any]:
-    call_args: Dict[str, Any] = {
+) -> dict[str, Any]:
+    call_args: dict[str, Any] = {
         "num_inference_steps": task_config.steps,
         "width": task_config.image_width,
         "height": task_config.image_height,
@@ -187,7 +202,7 @@ def run_inference_task(
     args: InferenceTaskArgs,
     config: Config | None = None,
     model_cache: ModelCache | None = None,
-) -> List[Image.Image]:
+) -> InferenceTaskResult:
     # Make sure the version of task is supported
     runner_version = Version(version())
     task_version = Version(args.version)
@@ -256,6 +271,7 @@ def run_inference_task(
         pipeline, refiner = model_cache.load(model_key, model_loader)
     else:
         pipeline, refiner = model_loader()
+    execution_dtype = resolve_execution_dtype(pipeline)
 
     generated_images = []
 
@@ -301,4 +317,4 @@ def run_inference_task(
     if utils.get_accelerator() == "cuda":
         torch.cuda.empty_cache()
 
-    return generated_images
+    return InferenceTaskResult(generated_images, execution_dtype)
