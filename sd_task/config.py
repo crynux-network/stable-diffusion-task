@@ -2,8 +2,12 @@ import os
 from typing import Any, Dict, List, Tuple, Type
 
 from pydantic import BaseModel
-from pydantic_settings import (BaseSettings, PydanticBaseSettingsSource,
-                               SettingsConfigDict, YamlConfigSettingsSource)
+from pydantic_settings import (
+    BaseSettings,
+    PydanticBaseSettingsSource,
+    SettingsConfigDict,
+    YamlConfigSettingsSource,
+)
 
 
 class ModelsDirConfig(BaseModel):
@@ -17,13 +21,10 @@ class DataDirConfig(BaseModel):
 
 class ModelConfig(BaseModel):
     id: str
-    variant: str | None = None
 
 
 class PreloadedModelsConfig(BaseModel):
     base: List[ModelConfig] | None = None
-    controlnet: List[ModelConfig] | None = None
-    vae: List[ModelConfig] | None = None
 
 
 class ProxyConfig(BaseModel):
