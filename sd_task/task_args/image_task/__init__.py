@@ -1,3 +1,17 @@
-from .task_args import BaseModelArgs, ImageTaskArgs, LoraArgs, TaskConfig
+from .task_args import (
+    BaseModelArgs,
+    ComponentSource,
+    ImageTaskArgs,
+    LoraArgs,
+    QuantizationConfig,
+    TaskConfig,
+)
 
-__all__ = ["BaseModelArgs", "ImageTaskArgs", "LoraArgs", "TaskConfig"]
+__all__ = [
+    "BaseModelArgs",
+    "ComponentSource",
+    "ImageTaskArgs",
+    "LoraArgs",
+    "QuantizationConfig",
+    "TaskConfig",
+]

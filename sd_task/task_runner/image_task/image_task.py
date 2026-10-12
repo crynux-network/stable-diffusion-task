@@ -57,25 +57,25 @@ def _configure_determinism(config: Config, seed: int) -> None:
     np.random.seed(seed)
 
 
-def _prepare_models(args: ImageTaskArgs, config: Config) -> None:
+def _prepare_models(args: ImageTaskArgs, config: Config) -> dict[str, str]:
     if config.local_files_only:
         log("Resolve the models from the local cache only")
-        resolve_models_from_cache(
+        return resolve_models_from_cache(
             args,
             external_model_cache_dir=config.data_dir.models.external,
             hf_model_cache_dir=config.data_dir.models.huggingface,
         )
-        return
 
     log("Check the model cache and download the models")
     with wrap_download_error():
-        check_and_prepare_models(
+        component_paths = check_and_prepare_models(
             args,
             external_model_cache_dir=config.data_dir.models.external,
             hf_model_cache_dir=config.data_dir.models.huggingface,
             proxy=config.proxy,
         )
     log("All the required models are downloaded")
+    return component_paths
 
 
 def run_image_task(
@@ -83,6 +83,8 @@ def run_image_task(
     config: Config | None = None,
     model_cache: ModelCache | None = None,
 ) -> ImageTaskResult:
+    from .quantization.registry import resolve_image_quantization
+
     if Version(version()) < Version(args.version):
         raise TaskVersionNotSupported()
 
@@ -96,7 +98,8 @@ def run_image_task(
         log(f"GPU: {gpu_info['gpu_name']} ({gpu_info['gpu_memory_gb']}GB)")
     log("Task is started")
 
-    _prepare_models(args, config)
+    component_paths = _prepare_models(args, config)
+    quantization = resolve_image_quantization(args)
 
     with wrap_model_load_error(config.local_files_only):
         pipeline_class = resolve_pipeline_class(
@@ -104,18 +107,27 @@ def run_image_task(
             cache_dir=config.data_dir.models.huggingface,
             local_files_only=True,
             has_images=bool(args.images),
+            revision=args.base_model.revision,
         )
 
-    model_key = generate_model_key(args, pipeline_class)
+    model_key = generate_model_key(
+        args,
+        pipeline_class,
+        effective_quantization=(
+            None if quantization is None else quantization["effective_config"]
+        ),
+    )
 
     def model_loader():
         with wrap_model_load_error(config.local_files_only):
             pipeline = load_pipeline(
                 pipeline_class,
-                args.base_model.name,
+                args,
                 cache_dir=config.data_dir.models.huggingface,
                 torch_dtype=_resolve_torch_dtype(args.dtype),
                 local_files_only=True,
+                component_paths=component_paths,
+                quantization=quantization,
             )
             if args.lora is not None:
                 load_lora(
@@ -149,4 +161,8 @@ def run_image_task(
     if utils.get_accelerator() == "cuda":
         torch.cuda.empty_cache()
 
-    return ImageTaskResult(generated_images, execution_dtype)
+    return ImageTaskResult(
+        generated_images,
+        execution_dtype,
+        None if quantization is None else quantization["effective_config"],
+    )

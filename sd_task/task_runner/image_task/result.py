@@ -5,9 +5,15 @@ from PIL import Image
 
 
 class ImageTaskResult(list[Image.Image]):
-    def __init__(self, images: Iterable[Image.Image], execution_dtype: str):
+    def __init__(
+        self,
+        images: Iterable[Image.Image],
+        execution_dtype: str,
+        execution_quantization: dict[str, Any] | None = None,
+    ):
         super().__init__(images)
         self.execution_dtype = execution_dtype
+        self.execution_quantization = execution_quantization
 
 
 def resolve_execution_dtype(pipeline: Any) -> str:

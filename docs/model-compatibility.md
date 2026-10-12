@@ -5,6 +5,10 @@
 This document specifies image execution from validated `ImageTaskArgs` to the
 ordered list of generated PIL images.
 
+Quantized model loading, task-time quantization, platform restrictions,
+LoRA compatibility, cache identity, and verification requirements are
+specified in [quantization.md](quantization.md).
+
 Public HTTP request conversion and public response conversion MUST remain
 outside this package. The package MUST NOT implement OpenAI Images or Responses
 API semantics.

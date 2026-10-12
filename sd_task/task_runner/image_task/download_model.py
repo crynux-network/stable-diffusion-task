@@ -1,22 +1,42 @@
 import os
 
 import validators
+from huggingface_hub import hf_hub_download
 
 from sd_task.download_model import (
     best_guess_local_weight_name,
     check_and_download_hf_pipeline,
     check_and_download_model_by_name,
     get_external_model_path,
+    requests_proxy_session,
 )
 from sd_task.task_args.image_task import ImageTaskArgs
 
-from .errors import ModelNotDownloaded
+from .errors import ModelNotDownloaded, TaskInvalid
+from .quantization.gguf import resolve_gguf_filename
+from .quantization.registry import resolve_component_loader
 
 
-def check_and_prepare_models(task_args: ImageTaskArgs, **kwargs) -> None:
+def check_and_prepare_models(task_args: ImageTaskArgs, **kwargs) -> dict[str, str]:
     task_args.base_model.name = check_and_download_hf_pipeline(
         task_args.base_model.name, **kwargs
     )
+
+    component_paths: dict[str, str] = {}
+    for component_name, source in task_args.components.items():
+        format_name = resolve_component_loader(source)
+        if format_name != "gguf":
+            raise TaskInvalid(f"Unsupported component format: {format_name}")
+        filename = resolve_gguf_filename(source)
+        hf_model_cache_dir = kwargs["hf_model_cache_dir"]
+        proxy = kwargs.get("proxy")
+        with requests_proxy_session(proxy):
+            component_paths[component_name] = hf_hub_download(
+                repo_id=source.repo,
+                filename=filename,
+                revision=source.revision,
+                cache_dir=hf_model_cache_dir,
+            )
 
     if task_args.lora is not None:
         requested_weight = task_args.lora.weight_file_name
@@ -29,6 +49,7 @@ def check_and_prepare_models(task_args: ImageTaskArgs, **kwargs) -> None:
                 **kwargs,
             )
         )
+    return component_paths
 
 
 def _resolve_external_model(
@@ -48,9 +69,26 @@ def resolve_models_from_cache(
     task_args: ImageTaskArgs,
     external_model_cache_dir: str,
     hf_model_cache_dir: str,
-) -> None:
+) -> dict[str, str]:
+    component_paths: dict[str, str] = {}
+    for component_name, source in task_args.components.items():
+        format_name = resolve_component_loader(source)
+        if format_name != "gguf":
+            raise TaskInvalid(f"Unsupported component format: {format_name}")
+        filename = resolve_gguf_filename(source)
+        try:
+            component_paths[component_name] = hf_hub_download(
+                repo_id=source.repo,
+                filename=filename,
+                revision=source.revision,
+                cache_dir=hf_model_cache_dir,
+                local_files_only=True,
+            )
+        except Exception as exc:
+            raise ModelNotDownloaded from exc
+
     if task_args.lora is None:
-        return
+        return component_paths
 
     if validators.url(task_args.lora.model):
         task_args.lora.model, task_args.lora.weight_file_name = _resolve_external_model(
@@ -65,3 +103,4 @@ def resolve_models_from_cache(
                 f"Lora model {task_args.lora.model} is not in the local cache"
             )
         task_args.lora.weight_file_name = weight_file_name
+    return component_paths

@@ -45,7 +45,7 @@ def configure_fake_image_task(monkeypatch, loaded_pipelines: list[FakePipeline])
     monkeypatch.setattr(image_module.utils, "get_gpu_info", lambda: None)
     monkeypatch.setattr(image_module.utils, "get_accelerator", lambda: "cpu")
     monkeypatch.setattr(
-        image_module, "resolve_models_from_cache", lambda *args, **kwargs: None
+        image_module, "resolve_models_from_cache", lambda *args, **kwargs: {}
     )
     monkeypatch.setattr(
         image_module,
@@ -54,7 +54,10 @@ def configure_fake_image_task(monkeypatch, loaded_pipelines: list[FakePipeline])
     )
 
     def load_pipeline(*args, **kwargs):
-        pipeline = FakePipeline(kwargs["torch_dtype"] or torch.float32)
+        torch_dtype = kwargs.get("torch_dtype")
+        if torch_dtype is None and len(args) >= 4:
+            torch_dtype = args[3]
+        pipeline = FakePipeline(torch_dtype or torch.float32)
         loaded_pipelines.append(pipeline)
         return pipeline
 

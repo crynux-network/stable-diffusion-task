@@ -26,12 +26,15 @@ def resolve_pipeline_class(
     cache_dir: str,
     local_files_only: bool,
     has_images: bool,
+    revision: str | None = None,
 ) -> Type[DiffusionPipeline]:
-    config = DiffusionPipeline.load_config(
-        model_name,
-        cache_dir=cache_dir,
-        local_files_only=local_files_only,
-    )
+    load_args: dict[str, Any] = {
+        "cache_dir": cache_dir,
+        "local_files_only": local_files_only,
+    }
+    if revision is not None:
+        load_args["revision"] = revision
+    config = DiffusionPipeline.load_config(model_name, **load_args)
     class_name = config.get("_class_name")
     if not isinstance(class_name, str):
         raise TaskInvalid("The checkpoint does not declare a pipeline class")
@@ -58,18 +61,75 @@ def resolve_pipeline_class(
 
 def load_pipeline(
     pipeline_class: Type[DiffusionPipeline],
-    model_name: str,
+    args: ImageTaskArgs,
     cache_dir: str,
     torch_dtype: torch.dtype | None,
     local_files_only: bool,
+    *,
+    component_paths: dict[str, str] | None = None,
+    quantization: dict[str, Any] | None = None,
 ) -> DiffusionPipeline:
+    from .quantization.gguf import load_gguf_transformer, pipeline_config_from_base
+    from .quantization.registry import resolve_component_loader
+
+    component_paths = component_paths or {}
     load_args: dict[str, Any] = {
         "cache_dir": cache_dir,
         "local_files_only": local_files_only,
     }
+    if args.base_model.revision is not None:
+        load_args["revision"] = args.base_model.revision
     if torch_dtype is not None:
         load_args["dtype"] = torch_dtype
-    return pipeline_class.from_pretrained(model_name, **load_args)
+
+    custom_pipeline_kwargs: dict[str, Any] = {}
+    if args.components:
+        pipeline_config = pipeline_config_from_base(
+            args.base_model.name,
+            cache_dir=cache_dir,
+            local_files_only=local_files_only,
+            revision=args.base_model.revision,
+        )
+        for component_name, source in args.components.items():
+            format_name = resolve_component_loader(source)
+            if format_name != "gguf":
+                raise TaskInvalid(f"Unsupported component format: {format_name}")
+            if component_name != "transformer":
+                raise TaskInvalid(
+                    f"GGUF adapter does not support component: {component_name}"
+                )
+            component_path = component_paths.get(component_name)
+            if not component_path:
+                raise TaskInvalid(
+                    f"Component file for {component_name} is not prepared"
+                )
+            custom_pipeline_kwargs[component_name] = load_gguf_transformer(
+                pipeline_config=pipeline_config,
+                source=source,
+                base_model_name=args.base_model.name,
+                base_model_revision=args.base_model.revision,
+                cache_dir=cache_dir,
+                torch_dtype=torch_dtype,
+                local_files_only=local_files_only,
+                component_path=component_path,
+            )
+
+    if quantization is not None and quantization["quant_method"] == "bitsandbytes":
+        for component_name in quantization["components_to_quantize"]:
+            if component_name in custom_pipeline_kwargs:
+                raise TaskInvalid(
+                    f"Component {component_name} cannot use both independent "
+                    "model files and task quantization"
+                )
+        load_args["quantization_config"] = quantization[
+            "pipeline_quantization_config"
+        ]
+
+    return pipeline_class.from_pretrained(
+        args.base_model.name,
+        **load_args,
+        **custom_pipeline_kwargs,
+    )
 
 
 def move_pipeline_to_accelerator(

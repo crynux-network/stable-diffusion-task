@@ -56,3 +56,41 @@ def test_image_task_accepts_generation_and_editing_fields():
     assert args.task_config.num_images_per_prompt == 2
     assert args.task_config.guidance_scale == 4
     assert args.strength == 0.7
+
+
+def test_image_task_accepts_quantization_and_components():
+    data = valid_args()
+    data.update(
+        {
+            "base_model": {"name": "test/model", "revision": None},
+            "components": {
+                "transformer": {
+                    "format": "gguf",
+                    "repo": "org/quantized",
+                    "revision": None,
+                    "format_kwargs": {"filename": "transformer-Q4_K_M.gguf"},
+                }
+            },
+            "quantization_config": {
+                "quant_method": "bitsandbytes",
+                "components_to_quantize": ["text_encoder"],
+                "quant_kwargs": {"load_in_8bit": True},
+            },
+        }
+    )
+
+    args = ImageTaskArgs.model_validate(data)
+    assert args.components["transformer"].format == "gguf"
+    assert args.quantization_config.quant_method == "bitsandbytes"
+    assert args.quantization_config.components_to_quantize == ["text_encoder"]
+
+
+def test_quantization_rejects_duplicate_components():
+    data = valid_args()
+    data["quantization_config"] = {
+        "quant_method": "bitsandbytes",
+        "components_to_quantize": ["transformer", "transformer"],
+        "quant_kwargs": {"load_in_4bit": True},
+    }
+    with pytest.raises(ValidationError):
+        ImageTaskArgs.model_validate(data)

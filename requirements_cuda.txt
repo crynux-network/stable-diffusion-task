@@ -3,7 +3,7 @@ torch==2.12.0+cu130
 --extra-index-url https://download.pytorch.org/whl/cu130
 torchvision==0.27.0+cu130
 
-accelerate==1.2.0
+accelerate==1.15.0
 pydantic==2.7.4
 pydantic-settings==2.6.1
 PyYAML==6.0.2
@@ -11,7 +11,7 @@ annotated-types==0.6.0
 Pillow==10.0.1
 controlnet-aux==0.0.7
 diffusers==0.41.0
-transformers==5.14.1
+transformers==5.19.0
 mediapipe==0.10.35
 validators==0.22.0
 tqdm==4.66.5
@@ -25,3 +25,8 @@ onnxruntime-gpu==1.20.0
 rembg[gpu]==2.0.58
 huggingface_hub==1.33.0
 numba==0.60.0
+bitsandbytes==0.50.2
+kernels==0.17.0
+triton-windows==3.7.1.post27; sys_platform == "win32"
+triton==3.6.0; sys_platform == "linux"
+gguf==0.17.1

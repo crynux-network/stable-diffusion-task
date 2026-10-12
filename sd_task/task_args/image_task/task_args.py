@@ -1,7 +1,7 @@
-from typing import Literal
+from typing import Any, Literal
 
 from annotated_types import Ge, Gt, Le, Lt
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 from typing_extensions import Annotated
 
 from ..types import FloatFractionAsInt, NonEmptyString
@@ -12,6 +12,32 @@ class BaseModelArgs(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     name: NonEmptyString
+    revision: NonEmptyString | None = None
+
+
+class ComponentSource(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    format: NonEmptyString
+    repo: NonEmptyString
+    revision: NonEmptyString | None = None
+    format_kwargs: dict[str, Any] = Field(default_factory=dict)
+
+
+class QuantizationConfig(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    quant_method: NonEmptyString
+    components_to_quantize: list[NonEmptyString]
+    quant_kwargs: dict[str, Any]
+
+    @model_validator(mode="after")
+    def _validate_components(self) -> "QuantizationConfig":
+        if not self.components_to_quantize:
+            raise ValueError("components_to_quantize must be non-empty")
+        if len(self.components_to_quantize) != len(set(self.components_to_quantize)):
+            raise ValueError("components_to_quantize must not contain duplicates")
+        return self
 
 
 class LoraArgs(BaseModel):
@@ -45,3 +71,5 @@ class ImageTaskArgs(BaseModel):
     strength: Annotated[float, Ge(0), Le(1)] | None = None
     task_config: TaskConfig
     lora: LoraArgs | None = None
+    components: dict[str, ComponentSource] = Field(default_factory=dict)
+    quantization_config: QuantizationConfig | None = None

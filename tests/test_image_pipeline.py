@@ -130,7 +130,7 @@ def test_load_pipeline_calls_only_resolved_class_once():
 
     result = pipeline_module.load_pipeline(
         LoadingPipeline,
-        "test/model",
+        make_args(),
         cache_dir="cache",
         torch_dtype=torch.float16,
         local_files_only=True,
@@ -140,6 +140,7 @@ def test_load_pipeline_calls_only_resolved_class_once():
     assert len(calls) == 1
     assert "scheduler" not in calls[0][1]
     assert calls[0][1]["dtype"] is torch.float16
+    assert calls[0][0] == "test/model"
 
 
 def test_lora_uses_standard_pipeline_interfaces():
