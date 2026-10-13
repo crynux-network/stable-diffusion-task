@@ -12,6 +12,7 @@ from requests import ConnectionError, HTTPError
 from sd_task import utils
 
 __all__ = [
+    "ExecutionModelFileError",
     "ModelDownloadError",
     "ModelInvalid",
     "ModelNotDownloaded",
@@ -55,6 +56,15 @@ class ModelNotDownloaded(ValueError):
 class TaskExecutionError(ValueError):
     def __str__(self) -> str:
         return "Task execution error"
+
+
+class ExecutionModelFileError(TaskExecutionError):
+    def __init__(self, reason: str):
+        super().__init__(reason)
+        self.reason = reason
+
+    def __str__(self) -> str:
+        return f"Task execution error: {self.reason}"
 
 
 def travel_exc(e: BaseException):

@@ -33,6 +33,10 @@ class QuantizationConfig(BaseModel):
 
     @model_validator(mode="after")
     def _validate_components(self) -> "QuantizationConfig":
+        if "dequantize" in self.quant_kwargs:
+            raise ValueError(
+                "quantization_config.quant_kwargs must not contain dequantize"
+            )
         if not self.components_to_quantize:
             raise ValueError("components_to_quantize must be non-empty")
         if len(self.components_to_quantize) != len(set(self.components_to_quantize)):

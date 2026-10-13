@@ -1,1 +1,292 @@
-{"$defs":{"BaseModelArgs":{"additionalProperties":false,"properties":{"name":{"minLength":1,"title":"Name","type":"string"},"revision":{"anyOf":[{"minLength":1,"type":"string"},{"type":"null"}],"default":null,"title":"Revision"}},"required":["name"],"title":"BaseModelArgs","type":"object"},"ComponentSource":{"additionalProperties":false,"properties":{"format":{"minLength":1,"title":"Format","type":"string"},"repo":{"minLength":1,"title":"Repo","type":"string"},"revision":{"anyOf":[{"minLength":1,"type":"string"},{"type":"null"}],"default":null,"title":"Revision"},"format_kwargs":{"additionalProperties":true,"title":"Format Kwargs","type":"object"}},"required":["format","repo"],"title":"ComponentSource","type":"object"},"LoraArgs":{"additionalProperties":false,"properties":{"model":{"minLength":1,"title":"Model","type":"string"},"weight_file_name":{"default":"","title":"Weight File Name","type":"string"},"weight":{"default":100,"exclusiveMinimum":0,"maximum":100,"title":"Weight","type":"integer"}},"required":["model"],"title":"LoraArgs","type":"object"},"QuantizationConfig":{"additionalProperties":false,"properties":{"quant_method":{"minLength":1,"title":"Quant Method","type":"string"},"components_to_quantize":{"items":{"minLength":1,"type":"string"},"title":"Components To Quantize","type":"array"},"quant_kwargs":{"additionalProperties":true,"title":"Quant Kwargs","type":"object"}},"required":["quant_method","components_to_quantize","quant_kwargs"],"title":"QuantizationConfig","type":"object"},"TaskConfig":{"additionalProperties":false,"properties":{"image_width":{"default":1024,"exclusiveMinimum":0,"title":"Image Width","type":"integer"},"image_height":{"default":1024,"exclusiveMinimum":0,"title":"Image Height","type":"integer"},"steps":{"default":30,"exclusiveMinimum":0,"maximum":100,"title":"Steps","type":"integer"},"seed":{"default":0,"exclusiveMaximum":2147483648,"minimum":0,"title":"Seed","type":"integer"},"num_images_per_prompt":{"default":1,"exclusiveMinimum":0,"maximum":10,"title":"Num Images Per Prompt","type":"integer"},"guidance_scale":{"anyOf":[{"minimum":0,"type":"number"},{"type":"null"}],"default":null,"title":"Guidance Scale"}},"title":"TaskConfig","type":"object"},"VersionString":{"enum":["1.0.0","2.0.0","2.1.0","2.5.0","3.0.0","3.7.0"],"title":"VersionString","type":"string"}},"additionalProperties":false,"properties":{"version":{"$ref":"#/$defs/VersionString","default":"3.7.0"},"base_model":{"$ref":"#/$defs/BaseModelArgs"},"dtype":{"default":"auto","enum":["float16","bfloat16","float32","auto"],"title":"Dtype","type":"string"},"prompt":{"minLength":1,"title":"Prompt","type":"string"},"negative_prompt":{"anyOf":[{"type":"string"},{"type":"null"}],"default":null,"title":"Negative Prompt"},"images":{"items":{"minLength":1,"type":"string"},"title":"Images","type":"array"},"strength":{"anyOf":[{"maximum":1,"minimum":0,"type":"number"},{"type":"null"}],"default":null,"title":"Strength"},"task_config":{"$ref":"#/$defs/TaskConfig"},"lora":{"anyOf":[{"$ref":"#/$defs/LoraArgs"},{"type":"null"}],"default":null},"components":{"additionalProperties":{"$ref":"#/$defs/ComponentSource"},"title":"Components","type":"object"},"quantization_config":{"anyOf":[{"$ref":"#/$defs/QuantizationConfig"},{"type":"null"}],"default":null}},"required":["base_model","prompt","task_config"],"title":"ImageTaskArgs","type":"object"}
+{
+  "$defs": {
+    "BaseModelArgs": {
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "minLength": 1,
+          "title": "Name",
+          "type": "string"
+        },
+        "revision": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Revision"
+        }
+      },
+      "required": [
+        "name"
+      ],
+      "title": "BaseModelArgs",
+      "type": "object"
+    },
+    "ComponentSource": {
+      "additionalProperties": false,
+      "properties": {
+        "format": {
+          "minLength": 1,
+          "title": "Format",
+          "type": "string"
+        },
+        "repo": {
+          "minLength": 1,
+          "title": "Repo",
+          "type": "string"
+        },
+        "revision": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Revision"
+        },
+        "format_kwargs": {
+          "additionalProperties": true,
+          "title": "Format Kwargs",
+          "type": "object"
+        }
+      },
+      "required": [
+        "format",
+        "repo"
+      ],
+      "title": "ComponentSource",
+      "type": "object"
+    },
+    "LoraArgs": {
+      "additionalProperties": false,
+      "properties": {
+        "model": {
+          "minLength": 1,
+          "title": "Model",
+          "type": "string"
+        },
+        "weight_file_name": {
+          "default": "",
+          "title": "Weight File Name",
+          "type": "string"
+        },
+        "weight": {
+          "default": 100,
+          "exclusiveMinimum": 0,
+          "maximum": 100,
+          "title": "Weight",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "model"
+      ],
+      "title": "LoraArgs",
+      "type": "object"
+    },
+    "QuantizationConfig": {
+      "additionalProperties": false,
+      "properties": {
+        "quant_method": {
+          "minLength": 1,
+          "title": "Quant Method",
+          "type": "string"
+        },
+        "components_to_quantize": {
+          "items": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "title": "Components To Quantize",
+          "type": "array"
+        },
+        "quant_kwargs": {
+          "additionalProperties": true,
+          "title": "Quant Kwargs",
+          "type": "object"
+        }
+      },
+      "required": [
+        "quant_method",
+        "components_to_quantize",
+        "quant_kwargs"
+      ],
+      "title": "QuantizationConfig",
+      "type": "object"
+    },
+    "TaskConfig": {
+      "additionalProperties": false,
+      "properties": {
+        "image_width": {
+          "default": 1024,
+          "exclusiveMinimum": 0,
+          "title": "Image Width",
+          "type": "integer"
+        },
+        "image_height": {
+          "default": 1024,
+          "exclusiveMinimum": 0,
+          "title": "Image Height",
+          "type": "integer"
+        },
+        "steps": {
+          "default": 30,
+          "exclusiveMinimum": 0,
+          "maximum": 100,
+          "title": "Steps",
+          "type": "integer"
+        },
+        "seed": {
+          "default": 0,
+          "exclusiveMaximum": 2147483648,
+          "minimum": 0,
+          "title": "Seed",
+          "type": "integer"
+        },
+        "num_images_per_prompt": {
+          "default": 1,
+          "exclusiveMinimum": 0,
+          "maximum": 10,
+          "title": "Num Images Per Prompt",
+          "type": "integer"
+        },
+        "guidance_scale": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Guidance Scale"
+        }
+      },
+      "title": "TaskConfig",
+      "type": "object"
+    },
+    "VersionString": {
+      "enum": [
+        "1.0.0",
+        "2.0.0",
+        "2.1.0",
+        "2.5.0",
+        "3.0.0",
+        "3.7.0"
+      ],
+      "title": "VersionString",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "version": {
+      "$ref": "#/$defs/VersionString",
+      "default": "3.7.0"
+    },
+    "base_model": {
+      "$ref": "#/$defs/BaseModelArgs"
+    },
+    "dtype": {
+      "default": "auto",
+      "enum": [
+        "float16",
+        "bfloat16",
+        "float32",
+        "auto"
+      ],
+      "title": "Dtype",
+      "type": "string"
+    },
+    "prompt": {
+      "minLength": 1,
+      "title": "Prompt",
+      "type": "string"
+    },
+    "negative_prompt": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Negative Prompt"
+    },
+    "images": {
+      "items": {
+        "minLength": 1,
+        "type": "string"
+      },
+      "title": "Images",
+      "type": "array"
+    },
+    "strength": {
+      "anyOf": [
+        {
+          "maximum": 1,
+          "minimum": 0,
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Strength"
+    },
+    "task_config": {
+      "$ref": "#/$defs/TaskConfig"
+    },
+    "lora": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/LoraArgs"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "components": {
+      "additionalProperties": {
+        "$ref": "#/$defs/ComponentSource"
+      },
+      "title": "Components",
+      "type": "object"
+    },
+    "quantization_config": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/QuantizationConfig"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    }
+  },
+  "required": [
+    "base_model",
+    "prompt",
+    "task_config"
+  ],
+  "title": "ImageTaskArgs",
+  "type": "object"
+}

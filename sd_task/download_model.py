@@ -120,7 +120,9 @@ def check_and_download_external_model(
             os.remove(temp_file)
 
 
-def check_and_download_hf_pipeline(model_name: str, **kwargs) -> str:
+def check_and_download_hf_pipeline(
+    model_name: str, revision: str | None = None, **kwargs
+) -> str:
     log("Check and download the Huggingface pipeline: " + model_name)
 
     hf_model_cache_dir = kwargs.pop("hf_model_cache_dir")
@@ -130,7 +132,10 @@ def check_and_download_hf_pipeline(model_name: str, **kwargs) -> str:
         with requests_proxy_session(proxy):
             DiffusionPipeline.download(model_name, **call_args)
 
-    _download({"cache_dir": hf_model_cache_dir})
+    call_args = {"cache_dir": hf_model_cache_dir}
+    if revision is not None:
+        call_args["revision"] = revision
+    _download(call_args)
 
     return model_name
 

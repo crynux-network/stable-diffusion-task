@@ -94,3 +94,25 @@ def test_quantization_rejects_duplicate_components():
     }
     with pytest.raises(ValidationError):
         ImageTaskArgs.model_validate(data)
+
+
+def test_quantization_rejects_dequantize_true():
+    data = valid_args()
+    data["quantization_config"] = {
+        "quant_method": "bitsandbytes",
+        "components_to_quantize": ["transformer"],
+        "quant_kwargs": {"dequantize": True, "load_in_4bit": True},
+    }
+    with pytest.raises(ValidationError):
+        ImageTaskArgs.model_validate(data)
+
+
+def test_quantization_rejects_dequantize_false():
+    data = valid_args()
+    data["quantization_config"] = {
+        "quant_method": "bitsandbytes",
+        "components_to_quantize": ["transformer"],
+        "quant_kwargs": {"dequantize": False, "load_in_4bit": True},
+    }
+    with pytest.raises(ValidationError):
+        ImageTaskArgs.model_validate(data)
