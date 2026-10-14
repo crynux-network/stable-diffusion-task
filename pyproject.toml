@@ -11,7 +11,7 @@ requires-python = ">=3.10"
 classifiers = ["Programming Language :: Python :: 3"]
 version = "3.7.0"
 dependencies = [
-    "pydantic>=2.4.2",
+    "pydantic==2.12.5",
     "pydantic-settings>=2.0.3",
     "PyYAML>=6.0.2",
     "annotated-types>=0.6.0",

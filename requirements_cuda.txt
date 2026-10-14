@@ -4,7 +4,7 @@ torch==2.12.0+cu130
 torchvision==0.27.0+cu130
 
 accelerate==1.15.0
-pydantic==2.7.4
+pydantic==2.12.5
 pydantic-settings==2.6.1
 PyYAML==6.0.2
 annotated-types==0.6.0
@@ -28,5 +28,5 @@ numba==0.60.0
 bitsandbytes==0.50.2
 kernels==0.17.0
 triton-windows==3.7.1.post27; sys_platform == "win32"
-triton==3.6.0; sys_platform == "linux"
+triton==3.7.0; sys_platform == "linux"
 gguf==0.17.1
