@@ -26,7 +26,7 @@ rembg[gpu]==2.0.58
 huggingface_hub==1.33.0
 numba==0.60.0
 bitsandbytes==0.50.2
-kernels==0.17.0
+kernels==0.17.2
 triton-windows==3.7.1.post27; sys_platform == "win32"
 triton==3.7.0; sys_platform == "linux"
 gguf==0.17.1
