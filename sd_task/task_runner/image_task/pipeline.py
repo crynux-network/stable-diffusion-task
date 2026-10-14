@@ -84,6 +84,11 @@ def load_pipeline(
 
     custom_pipeline_kwargs: dict[str, Any] = {}
     if args.components:
+        from .quantization.diffusers_component import (
+            DIFFUSERS_COMPONENT_FORMAT,
+            load_diffusers_component,
+        )
+
         pipeline_config = pipeline_config_from_base(
             args.base_model.name,
             cache_dir=cache_dir,
@@ -92,27 +97,38 @@ def load_pipeline(
         )
         for component_name, source in args.components.items():
             format_name = resolve_component_loader(source)
-            if format_name != "gguf":
-                raise TaskInvalid(f"Unsupported component format: {format_name}")
-            if component_name != "transformer":
-                raise TaskInvalid(
-                    f"GGUF adapter does not support component: {component_name}"
-                )
             component_path = component_paths.get(component_name)
             if not component_path:
                 raise TaskInvalid(
                     f"Component file for {component_name} is not prepared"
                 )
-            custom_pipeline_kwargs[component_name] = load_gguf_transformer(
-                pipeline_config=pipeline_config,
-                source=source,
-                base_model_name=args.base_model.name,
-                base_model_revision=args.base_model.revision,
-                cache_dir=cache_dir,
-                torch_dtype=torch_dtype,
-                local_files_only=local_files_only,
-                component_path=component_path,
-            )
+            if format_name == "gguf":
+                if component_name != "transformer":
+                    raise TaskInvalid(
+                        f"GGUF adapter does not support component: {component_name}"
+                    )
+                custom_pipeline_kwargs[component_name] = load_gguf_transformer(
+                    pipeline_config=pipeline_config,
+                    source=source,
+                    base_model_name=args.base_model.name,
+                    base_model_revision=args.base_model.revision,
+                    cache_dir=cache_dir,
+                    torch_dtype=torch_dtype,
+                    local_files_only=local_files_only,
+                    component_path=component_path,
+                )
+            elif format_name == DIFFUSERS_COMPONENT_FORMAT:
+                custom_pipeline_kwargs[component_name] = load_diffusers_component(
+                    pipeline_config=pipeline_config,
+                    component_name=component_name,
+                    source=source,
+                    cache_dir=cache_dir,
+                    torch_dtype=torch_dtype,
+                    local_files_only=local_files_only,
+                    component_path=component_path,
+                )
+            else:
+                raise TaskInvalid(f"Unsupported component format: {format_name}")
 
     if quantization is not None and quantization["quant_method"] == "bitsandbytes":
         for component_name in quantization["components_to_quantize"]:

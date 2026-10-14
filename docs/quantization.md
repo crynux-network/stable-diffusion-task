@@ -102,9 +102,44 @@ the overridden floating-point transformer from the base repository. It MUST
 NOT call `DiffusionPipeline.from_single_file` and MUST NOT choose a class from
 a model ID or filename.
 
+An independent Diffusers-format component uses:
+
+```json
+{
+  "base_model": {
+    "name": "org/pipeline",
+    "revision": null
+  },
+  "components": {
+    "vae": {
+      "format": "diffusers",
+      "repo": "org/standalone-vae",
+      "revision": null,
+      "format_kwargs": {}
+    }
+  }
+}
+```
+
+The current Diffusers component adapter MUST support any component name
+declared in the base pipeline `model_index.json` with `format="diffusers"`.
+`format_kwargs.subfolder` MUST be absent, or a non-empty string naming the
+subdirectory inside the component repository. The adapter MUST NOT require
+`filename`.
+
+The Diffusers component loader MUST read `model_index.json`, resolve the
+declared component class for that component name, and invoke that class through
+`from_pretrained` on the prepared component path. When `subfolder` is set, the
+loader MUST pass it to `from_pretrained`. The loader MUST inject the loaded
+module into `pipeline_class.from_pretrained` under that component name. The
+loader MUST NOT download or load the overridden component from the base
+repository. It MUST NOT choose a class from a model ID or filename.
+
 Every requested repository ref MUST be resolved to an immutable commit before
 execution. The pipeline commit, component name, component format, component
-model-file commit, and filename MUST participate in model-file identity.
+model-file commit, and format kwargs that participate in download identity
+MUST participate in model-file identity. For GGUF components that includes
+`filename`. For Diffusers components that includes `subfolder` when present.
 
 ### Task-time quantization
 

@@ -1,7 +1,7 @@
 import os
 
 import validators
-from huggingface_hub import hf_hub_download
+from huggingface_hub import hf_hub_download, snapshot_download
 
 from sd_task.download_model import (
     best_guess_local_weight_name,
@@ -14,6 +14,10 @@ from sd_task.config import ProxyConfig
 from sd_task.task_args.image_task import ComponentSource, ImageTaskArgs
 
 from .errors import ModelNotDownloaded, TaskInvalid
+from .quantization.diffusers_component import (
+    DIFFUSERS_COMPONENT_FORMAT,
+    resolve_diffusers_subfolder,
+)
 from .quantization.gguf import resolve_gguf_filename
 from .quantization.registry import resolve_component_loader
 
@@ -22,16 +26,33 @@ def download_component_file(
     source: ComponentSource, hf_model_cache_dir: str, proxy: ProxyConfig | None
 ) -> str:
     format_name = resolve_component_loader(source)
-    if format_name != "gguf":
-        raise TaskInvalid(f"Unsupported component format: {format_name}")
-    filename = resolve_gguf_filename(source)
     with requests_proxy_session(proxy):
-        return hf_hub_download(
-            repo_id=source.repo,
-            filename=filename,
-            revision=source.revision,
-            cache_dir=hf_model_cache_dir,
-        )
+        if format_name == "gguf":
+            filename = resolve_gguf_filename(source)
+            return hf_hub_download(
+                repo_id=source.repo,
+                filename=filename,
+                revision=source.revision,
+                cache_dir=hf_model_cache_dir,
+            )
+        if format_name == DIFFUSERS_COMPONENT_FORMAT:
+            return _download_diffusers_component(source, hf_model_cache_dir)
+    raise TaskInvalid(f"Unsupported component format: {format_name}")
+
+
+def _download_diffusers_component(
+    source: ComponentSource, hf_model_cache_dir: str, *, local_files_only: bool = False
+) -> str:
+    subfolder = resolve_diffusers_subfolder(source)
+    download_args: dict = {
+        "repo_id": source.repo,
+        "revision": source.revision,
+        "cache_dir": hf_model_cache_dir,
+        "local_files_only": local_files_only,
+    }
+    if subfolder is not None:
+        download_args["allow_patterns"] = [f"{subfolder}/*", f"{subfolder}/**"]
+    return snapshot_download(**download_args)
 
 
 def check_and_prepare_models(task_args: ImageTaskArgs, **kwargs) -> dict[str, str]:
@@ -80,17 +101,24 @@ def resolve_models_from_cache(
     component_paths: dict[str, str] = {}
     for component_name, source in task_args.components.items():
         format_name = resolve_component_loader(source)
-        if format_name != "gguf":
-            raise TaskInvalid(f"Unsupported component format: {format_name}")
-        filename = resolve_gguf_filename(source)
         try:
-            component_paths[component_name] = hf_hub_download(
-                repo_id=source.repo,
-                filename=filename,
-                revision=source.revision,
-                cache_dir=hf_model_cache_dir,
-                local_files_only=True,
-            )
+            if format_name == "gguf":
+                filename = resolve_gguf_filename(source)
+                component_paths[component_name] = hf_hub_download(
+                    repo_id=source.repo,
+                    filename=filename,
+                    revision=source.revision,
+                    cache_dir=hf_model_cache_dir,
+                    local_files_only=True,
+                )
+            elif format_name == DIFFUSERS_COMPONENT_FORMAT:
+                component_paths[component_name] = _download_diffusers_component(
+                    source, hf_model_cache_dir, local_files_only=True
+                )
+            else:
+                raise TaskInvalid(f"Unsupported component format: {format_name}")
+        except TaskInvalid:
+            raise
         except Exception as exc:
             raise ModelNotDownloaded from exc
 

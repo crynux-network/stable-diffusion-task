@@ -85,6 +85,21 @@ def test_image_task_accepts_quantization_and_components():
     assert args.quantization_config.components_to_quantize == ["text_encoder"]
 
 
+def test_image_task_accepts_diffusers_components():
+    data = valid_args()
+    data["components"] = {
+        "vae": {
+            "format": "diffusers",
+            "repo": "org/vae",
+            "revision": None,
+            "format_kwargs": {"subfolder": "vae"},
+        }
+    }
+    args = ImageTaskArgs.model_validate(data)
+    assert args.components["vae"].format == "diffusers"
+    assert args.components["vae"].format_kwargs["subfolder"] == "vae"
+
+
 def test_quantization_rejects_duplicate_components():
     data = valid_args()
     data["quantization_config"] = {

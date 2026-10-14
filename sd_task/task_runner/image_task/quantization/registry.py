@@ -12,6 +12,10 @@ from .bitsandbytes import (
     effective_bitsandbytes_identity,
     resolve_pipeline_quantization_config,
 )
+from .diffusers_component import (
+    DIFFUSERS_COMPONENT_FORMAT,
+    resolve_diffusers_subfolder,
+)
 from .errors import (
     ImageQuantizationRuntimeUnsupported,
     UnsupportedComponentFormat,
@@ -41,6 +45,9 @@ def resolve_component_loader(source: ComponentSource) -> str:
     if source.format == "gguf":
         resolve_gguf_filename(source)
         return "gguf"
+    if source.format == DIFFUSERS_COMPONENT_FORMAT:
+        resolve_diffusers_subfolder(source)
+        return DIFFUSERS_COMPONENT_FORMAT
     raise UnsupportedComponentFormat(source.format)
 
 

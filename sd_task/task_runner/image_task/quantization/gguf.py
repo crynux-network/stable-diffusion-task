@@ -1,15 +1,19 @@
 from __future__ import annotations
 
 import os
-from typing import Any, Type
+from typing import Any
 
 import torch
-from diffusers import DiffusionPipeline, GGUFQuantizationConfig
+from diffusers import GGUFQuantizationConfig
 from huggingface_hub import hf_hub_download
 
 from sd_task.task_args.image_task import ComponentSource
 from sd_task.task_runner.image_task.errors import TaskInvalid
 
+from .component_class import (
+    component_class_from_pipeline_config,
+    pipeline_config_from_base,
+)
 from .errors import UnsupportedComponentFormat
 
 SUPPORTED_GGUF_TENSOR_TYPES = frozenset(
@@ -27,6 +31,13 @@ SUPPORTED_GGUF_TENSOR_TYPES = frozenset(
         "Q6_K",
     }
 )
+
+__all__ = [
+    "SUPPORTED_GGUF_TENSOR_TYPES",
+    "load_gguf_transformer",
+    "pipeline_config_from_base",
+    "resolve_gguf_filename",
+]
 
 
 def resolve_gguf_filename(source: ComponentSource) -> str:
@@ -52,18 +63,13 @@ def load_gguf_transformer(
     if source.format != "gguf":
         raise UnsupportedComponentFormat(source.format)
 
-    transformer_entry = pipeline_config.get("transformer")
-    if not isinstance(transformer_entry, (list, tuple)) or len(transformer_entry) != 2:
-        raise TaskInvalid("Pipeline model_index.json does not declare transformer")
-
-    library_name, class_name = transformer_entry
-    if not isinstance(library_name, str) or not isinstance(class_name, str):
-        raise TaskInvalid("Pipeline transformer class declaration is invalid")
-
-    transformer_cls = _resolve_component_class(library_name, class_name)
+    transformer_cls = component_class_from_pipeline_config(
+        pipeline_config, "transformer"
+    )
     if not hasattr(transformer_cls, "from_single_file"):
         raise TaskInvalid(
-            f"Transformer class {class_name} does not support from_single_file"
+            f"Transformer class {transformer_cls.__name__} does not support "
+            "from_single_file"
         )
 
     config_dir = _resolve_component_config_dir(
@@ -132,34 +138,3 @@ def _resolve_component_config_dir(
         download_args["revision"] = base_model_revision
     config_file = hf_hub_download(**download_args)
     return os.path.dirname(config_file)
-
-
-def _resolve_component_class(library_name: str, class_name: str) -> Type[Any]:
-    if library_name == "diffusers":
-        module = __import__("diffusers")
-    elif library_name == "transformers":
-        module = __import__("transformers")
-    else:
-        raise TaskInvalid(f"Unsupported component library: {library_name}")
-    component_cls = getattr(module, class_name, None)
-    if component_cls is None:
-        raise TaskInvalid(f"Component class {class_name} is unavailable")
-    return component_cls
-
-
-def pipeline_config_from_base(
-    model_name: str,
-    cache_dir: str,
-    local_files_only: bool,
-    revision: str | None = None,
-) -> dict[str, Any]:
-    load_args: dict[str, Any] = {
-        "cache_dir": cache_dir,
-        "local_files_only": local_files_only,
-    }
-    if revision is not None:
-        load_args["revision"] = revision
-    config = DiffusionPipeline.load_config(model_name, **load_args)
-    if not isinstance(config, dict):
-        raise TaskInvalid("Pipeline config is invalid")
-    return config
