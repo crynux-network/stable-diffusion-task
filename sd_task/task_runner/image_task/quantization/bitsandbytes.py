@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import inspect
-import sys
 from typing import Any
 
 import torch
@@ -79,10 +78,6 @@ def resolve_pipeline_quantization_config(
     quantization_config: QuantizationConfig,
     args: ImageTaskArgs,
 ) -> Any:
-    if sys.platform == "darwin":
-        raise ImageQuantizationRuntimeUnsupported(
-            "BitsAndBytes CUDA quantization is unsupported on macOS"
-        )
     try:
         import bitsandbytes  # noqa: F401
         from diffusers.quantizers import PipelineQuantizationConfig

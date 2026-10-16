@@ -253,8 +253,11 @@ Nunchaku Lite MUST be loaded only from a complete Diffusers pipeline
 repository whose component configuration selects the Nunchaku runtime.
 TaskArgs MUST NOT duplicate the embedded backend configuration.
 
-Nunchaku Lite execution is Linux CUDA only. Windows and macOS MUST return an
-unsupported-runtime error because the required CUDA kernel is unavailable.
+Nunchaku Lite execution requires NVIDIA CUDA kernels and is therefore limited
+to Linux CUDA hosts in practice. Windows MUST return an unsupported-runtime
+error when the Lite kernel package is unavailable. macOS MUST NOT be rejected
+by an sd-task platform gate; loading MUST fail through the missing CUDA kernel
+or dependency error.
 
 The verified Linux baseline used a 24 GB RTX 4090. Peak allocated CUDA memory
 was approximately 6.8 GiB for 512 by 512 generation and 8.6 GiB for 1024 by
@@ -336,8 +339,14 @@ The current Linux CUDA dependency set supports:
 
 ### macOS
 
-The CUDA quantization backends defined by this document MUST return an
-unsupported-runtime error on macOS.
+The current macOS dependency set includes BitsAndBytes and GGUF packages.
+sd-task MUST NOT reject BitsAndBytes or GGUF solely because `sys.platform` is
+`darwin`. Execution success depends on the installed wheels, Diffusers MPS
+support, and Apple Silicon runtime behavior.
+
+Nunchaku Lite has no MPS backend. macOS MUST NOT apply an sd-task platform
+gate for Nunchaku; the load MUST fail through missing CUDA kernels or
+dependencies.
 
 Actual execution MUST satisfy the selected backend's dependency,
 component-class, kernel, and GPU-architecture requirements. Availability of a
@@ -362,8 +371,13 @@ Cache entries with different effective configurations MUST NOT be shared.
 
 The runtime MUST report the actual execution dtype, normalized effective
 quantization set, component-to-backend mapping, and loaded model-file identity.
-It MUST not report a requested backend when loading fell back to
-floating-point weights.
+Execution dtype MUST be the floating compute or cast dtype
+(`float16`, `bfloat16`, or `float32`). It MUST NOT report quantized packed
+storage dtypes such as `uint8` or `int8`. When BitsAndBytes supplies
+`bnb_4bit_compute_dtype`, that value MUST be reported. When TaskArgs `dtype`
+is `auto`, the runtime MUST report the resolved concrete floating dtype, not
+the literal `auto`. It MUST not report a requested backend when loading fell
+back to floating-point weights.
 
 ## Unsupported execution
 

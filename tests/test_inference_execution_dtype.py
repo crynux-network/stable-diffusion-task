@@ -116,3 +116,33 @@ def test_execution_dtype_requires_transformer():
     )
 
     assert resolve_execution_dtype(pipeline) == "float32"
+
+
+class PackedThenFloating(torch.nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.packed = torch.nn.Parameter(
+            torch.zeros(2, dtype=torch.uint8), requires_grad=False
+        )
+        self.bias = torch.nn.Parameter(torch.zeros(1, dtype=torch.bfloat16))
+
+
+def test_execution_dtype_skips_packed_uint8_weights():
+    pipeline = SimpleNamespace(transformer=PackedThenFloating())
+    assert resolve_execution_dtype(pipeline) == "bfloat16"
+
+
+def test_execution_dtype_prefers_bnb_compute_dtype():
+    pipeline = SimpleNamespace(transformer=PackedThenFloating())
+    quantization = {
+        "quant_method": "bitsandbytes",
+        "effective_config": {
+            "quant_method": "bitsandbytes",
+            "components_to_quantize": ["transformer"],
+            "quant_kwargs": {
+                "load_in_4bit": True,
+                "bnb_4bit_compute_dtype": "float16",
+            },
+        },
+    }
+    assert resolve_execution_dtype(pipeline, quantization=quantization) == "float16"

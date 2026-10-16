@@ -147,7 +147,7 @@ def run_image_task(
     else:
         pipeline = model_loader()
 
-    execution_dtype = resolve_execution_dtype(pipeline)
+    execution_dtype = resolve_execution_dtype(pipeline, quantization=quantization)
     call_args = build_pipeline_call_args(pipeline, args)
 
     with wrap_execution_error():

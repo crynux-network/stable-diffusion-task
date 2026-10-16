@@ -22,3 +22,6 @@ onnxruntime==1.18.0
 rembg==2.0.58
 huggingface_hub==1.33.0
 numba==0.60.0
+bitsandbytes==0.50.2
+kernels==0.17.2
+gguf==0.17.1

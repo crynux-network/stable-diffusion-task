@@ -56,7 +56,3 @@ def assert_nunchaku_platform_supported() -> None:
         raise ImageQuantizationRuntimeUnsupported(
             "Nunchaku Lite kernels are unavailable on Windows"
         )
-    if sys.platform == "darwin":
-        raise ImageQuantizationRuntimeUnsupported(
-            "Nunchaku Lite CUDA quantization is unsupported on macOS"
-        )
