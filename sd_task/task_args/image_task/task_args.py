@@ -5,7 +5,6 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 from typing_extensions import Annotated
 
 from ..types import FloatFractionAsInt, NonEmptyString
-from ..version import VersionString
 
 
 class BaseModelArgs(BaseModel):
@@ -66,7 +65,7 @@ class TaskConfig(BaseModel):
 class ImageTaskArgs(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    version: VersionString = VersionString.V3_7_0
+    version: NonEmptyString = "3.7.0"
     base_model: BaseModelArgs
     dtype: Literal["float16", "bfloat16", "float32", "auto"] = "auto"
     prompt: NonEmptyString

@@ -3,7 +3,7 @@ from typing import Annotated, Literal, List
 from annotated_types import Ge, Gt, MinLen, Le
 from pydantic import BaseModel, HttpUrl
 
-from ..version import VersionString
+from ..types import NonEmptyString
 
 
 class TransformArgs(BaseModel):
@@ -89,4 +89,4 @@ class FinetuneLoraTaskArgs(BaseModel):
 
     checkpoint: Annotated[str, MinLen(1)] | None = None
 
-    version: VersionString = VersionString.V2_5_0
+    version: NonEmptyString = "2.5.0"

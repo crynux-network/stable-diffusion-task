@@ -176,25 +176,15 @@
       },
       "title": "TaskConfig",
       "type": "object"
-    },
-    "VersionString": {
-      "enum": [
-        "1.0.0",
-        "2.0.0",
-        "2.1.0",
-        "2.5.0",
-        "3.0.0",
-        "3.7.0"
-      ],
-      "title": "VersionString",
-      "type": "string"
     }
   },
   "additionalProperties": false,
   "properties": {
     "version": {
-      "$ref": "#/$defs/VersionString",
-      "default": "3.7.0"
+      "default": "3.7.0",
+      "minLength": 1,
+      "title": "Version",
+      "type": "string"
     },
     "base_model": {
       "$ref": "#/$defs/BaseModelArgs"
