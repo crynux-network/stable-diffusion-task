@@ -91,7 +91,7 @@ class, and invoke that model class through `from_single_file`. The loader MUST
 resolve the transformer Diffusers config from the base pipeline repository
 component subfolder through the configured Hugging Face cache directory, and
 MUST pass that local config directory to `from_single_file`. The loader MUST pass Diffusers `GGUFQuantizationConfig` with `compute_dtype` equal to the
-task `dtype`, or `float32` when `dtype` is absent. After `from_single_file`,
+resolved concrete task dtype. After `from_single_file`,
 the loader MUST materialize every Diffusers `GGUFParameter` whose GGUF type is
 an unquantized floating-point type (`F32`, `F16`, or `BF16`) into a plain
 `torch.nn.Parameter` at `compute_dtype` through Diffusers
@@ -199,8 +199,9 @@ The adapter MUST support:
 - `bnb_4bit_compute_dtype` values `float16`, `bfloat16`, and `float32`; and
 - both boolean values for `bnb_4bit_use_double_quant`.
 
-When `bnb_4bit_compute_dtype` is absent, the runtime MUST resolve the task
-`dtype`. The resolved value MUST participate in execution and cache identity.
+When `bnb_4bit_compute_dtype` is absent, the runtime MUST use the concrete
+task dtype resolved before model load. That resolved dtype MUST participate in
+execution and cache identity.
 
 ### INT8
 

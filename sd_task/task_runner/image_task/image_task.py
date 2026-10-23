@@ -12,6 +12,7 @@ from sd_task.log import log
 from sd_task.task_args.image_task import ImageTaskArgs
 
 from .download_model import check_and_prepare_models, resolve_models_from_cache
+from .dtype import resolve_image_dtype
 from .errors import (
     TaskVersionNotSupported,
     wrap_download_error,
@@ -27,16 +28,6 @@ from .pipeline import (
     resolve_pipeline_class,
 )
 from .result import ImageTaskResult, resolve_execution_dtype
-
-
-def _resolve_torch_dtype(dtype: str) -> torch.dtype | None:
-    if dtype == "float16":
-        return torch.float16
-    if dtype == "bfloat16":
-        return torch.bfloat16
-    if dtype == "float32":
-        return torch.float32
-    return None
 
 
 def _configure_determinism(config: Config, seed: int) -> None:
@@ -99,7 +90,6 @@ def run_image_task(
     log("Task is started")
 
     component_paths = _prepare_models(args, config)
-    quantization = resolve_image_quantization(args)
 
     with wrap_model_load_error(config.local_files_only):
         pipeline_class = resolve_pipeline_class(
@@ -109,6 +99,16 @@ def run_image_task(
             has_images=bool(args.images),
             revision=args.base_model.revision,
         )
+        resolved_dtype_name, torch_dtype = resolve_image_dtype(
+            args.dtype,
+            base_model_name=args.base_model.name,
+            base_model_revision=args.base_model.revision,
+            cache_dir=config.data_dir.models.huggingface,
+            local_files_only=True,
+        )
+
+    args = args.model_copy(update={"dtype": resolved_dtype_name})
+    quantization = resolve_image_quantization(args)
 
     model_key = generate_model_key(
         args,
@@ -124,7 +124,7 @@ def run_image_task(
                 pipeline_class,
                 args,
                 cache_dir=config.data_dir.models.huggingface,
-                torch_dtype=_resolve_torch_dtype(args.dtype),
+                torch_dtype=torch_dtype,
                 local_files_only=True,
                 component_paths=component_paths,
                 quantization=quantization,

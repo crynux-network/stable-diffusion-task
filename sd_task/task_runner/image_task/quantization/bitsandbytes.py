@@ -58,10 +58,7 @@ def _normalize_quant_kwargs(
         )
 
     if kwargs.get("load_in_4bit") and "bnb_4bit_compute_dtype" not in kwargs:
-        if args.dtype == "auto":
-            kwargs["bnb_4bit_compute_dtype"] = torch.float32
-        else:
-            kwargs["bnb_4bit_compute_dtype"] = _torch_dtype(args.dtype)
+        kwargs["bnb_4bit_compute_dtype"] = _torch_dtype(args.dtype)
     elif "bnb_4bit_compute_dtype" in kwargs and isinstance(
         kwargs["bnb_4bit_compute_dtype"], str
     ):

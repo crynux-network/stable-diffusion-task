@@ -32,7 +32,7 @@ def load_diffusers_component(
     component_name: str,
     source: ComponentSource,
     cache_dir: str,
-    torch_dtype: torch.dtype | None,
+    torch_dtype: torch.dtype,
     local_files_only: bool,
     component_path: str,
 ) -> Any:
@@ -50,9 +50,8 @@ def load_diffusers_component(
     load_args: dict[str, Any] = {
         "cache_dir": cache_dir,
         "local_files_only": local_files_only,
+        "torch_dtype": torch_dtype,
     }
-    if torch_dtype is not None:
-        load_args["torch_dtype"] = torch_dtype
     subfolder = resolve_diffusers_subfolder(source)
     if subfolder is not None:
         load_args["subfolder"] = subfolder

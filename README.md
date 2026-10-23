@@ -64,8 +64,9 @@ Text-to-image, LoRA, and image-editing examples are available under
 
 `preloaded_models.base` lists pipeline repositories that `sd_task/prefetch.py`
 downloads into the configured Hugging Face cache. Runtime `dtype` controls the
-loaded PyTorch precision. It does not select repository weight variants or
-quantized artifacts.
+loaded PyTorch precision. `auto` is resolved to a concrete dtype from the base
+pipeline transformer config before weights load. It does not select repository
+weight variants or quantized artifacts.
 
 ## JSON schema
 

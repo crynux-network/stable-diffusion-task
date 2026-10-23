@@ -56,7 +56,7 @@ def load_gguf_transformer(
     base_model_name: str,
     base_model_revision: str | None,
     cache_dir: str,
-    torch_dtype: torch.dtype | None,
+    torch_dtype: torch.dtype,
     local_files_only: bool,
     component_path: str,
 ) -> Any:
@@ -79,16 +79,15 @@ def load_gguf_transformer(
         cache_dir=cache_dir,
         local_files_only=local_files_only,
     )
-    compute_dtype = torch_dtype if torch_dtype is not None else torch.float32
     load_args: dict[str, Any] = {
         "config": config_dir,
         "cache_dir": cache_dir,
         "local_files_only": local_files_only,
-        "quantization_config": GGUFQuantizationConfig(compute_dtype=compute_dtype),
-        "dtype": compute_dtype,
+        "quantization_config": GGUFQuantizationConfig(compute_dtype=torch_dtype),
+        "dtype": torch_dtype,
     }
     transformer = transformer_cls.from_single_file(component_path, **load_args)
-    return _materialize_unquantized_gguf_parameters(transformer, compute_dtype)
+    return _materialize_unquantized_gguf_parameters(transformer, torch_dtype)
 
 
 def _materialize_unquantized_gguf_parameters(

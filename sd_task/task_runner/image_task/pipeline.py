@@ -63,7 +63,7 @@ def load_pipeline(
     pipeline_class: Type[DiffusionPipeline],
     args: ImageTaskArgs,
     cache_dir: str,
-    torch_dtype: torch.dtype | None,
+    torch_dtype: torch.dtype,
     local_files_only: bool,
     *,
     component_paths: dict[str, str] | None = None,
@@ -76,11 +76,10 @@ def load_pipeline(
     load_args: dict[str, Any] = {
         "cache_dir": cache_dir,
         "local_files_only": local_files_only,
+        "dtype": torch_dtype,
     }
     if args.base_model.revision is not None:
         load_args["revision"] = args.base_model.revision
-    if torch_dtype is not None:
-        load_args["dtype"] = torch_dtype
 
     custom_pipeline_kwargs: dict[str, Any] = {}
     if args.components:

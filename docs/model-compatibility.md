@@ -75,6 +75,18 @@ miss. The checkpoint scheduler MUST be retained.
 `dtype` MUST control the loaded PyTorch runtime precision. It MUST NOT select a
 repository filename variant, FP8 artifact, or quantized repository.
 
+Before any weights are loaded, the runtime MUST resolve TaskArgs `dtype` to one
+concrete value among `float16`, `bfloat16`, and `float32`. Explicit concrete
+values MUST be kept unchanged. When `dtype` is `auto`, the runtime MUST read the
+base pipeline `transformer/config.json` field `torch_dtype`. A missing, `null`,
+or `auto` config value MUST resolve to `float32`. Any other non-empty illegal
+config value MUST fail as an invalid task. Resolution MUST NOT branch on model
+ID or node GPU model. The same concrete dtype MUST be passed to the base
+pipeline load, GGUF `compute_dtype` / `from_single_file`, independent Diffusers
+components, and the default BitsAndBytes `bnb_4bit_compute_dtype` when the
+client omits that field. The model cache key MUST use the resolved concrete
+dtype, not the literal `auto`.
+
 When LoRA is present, the pipeline MUST expose the standard Diffusers
 `load_lora_weights` and `set_adapters` interfaces. An incompatible LoRA MUST be
 reported as an invalid task.

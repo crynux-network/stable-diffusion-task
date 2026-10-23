@@ -115,7 +115,7 @@ def test_load_diffusers_component_rejects_missing_model_index_entry():
             component_name="vae",
             source=ComponentSource(format="diffusers", repo="org/vae"),
             cache_dir="/cache",
-            torch_dtype=None,
+            torch_dtype=torch.float16,
             local_files_only=True,
             component_path="/cache/org/vae",
         )
@@ -176,7 +176,7 @@ def test_load_pipeline_rejects_gguf_non_transformer(monkeypatch):
             MagicMock(),
             args,
             cache_dir="/cache",
-            torch_dtype=None,
+            torch_dtype=torch.float16,
             local_files_only=True,
             component_paths={"vae": "/cache/vae.gguf"},
         )
