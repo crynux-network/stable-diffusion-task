@@ -172,7 +172,7 @@ Model-family-specific generation controls MUST NOT be hardcoded onto `VideoTaskC
 Video workflows routinely stack 2 to 4 LoRAs simultaneously (for example: a `LightX2V` 4-step speed LoRA + a Character LoRA + a Camera/Motion LoRA, or separate high-noise and low-noise expert LoRAs on `Wan 2.2`).
 
 1. Each entry in `loras` is loaded sequentially in list order with deterministic adapter names `["lora_0", "lora_1", ...]` and activated without weight fusion (`set_adapters` with per-adapter weights).
-2. **`revision` Pinning**: Unlike legacy single-LoRA `LoraArgs`, `VideoLoraArgs` includes `revision: str | None = None` so Relay can commit-pin LoRA repositories in `ExecutionModelFileHashes` alongside `base_model` and `components`.
+2. **Foreground Auxiliary Download & `revision`**: Like `ImageTaskArgs.lora`, `loras` are distributed through task-scoped foreground auxiliary downloads (`lora:` entries in `ModelIDs`) before worker inference rather than Relay's `RequiredModelFileHashes` disk hard gate, supporting both Hugging Face repositories (with optional `revision` and `weight_file_name`) and external model URLs.
 3. **`target` Routing for Dual-Denoiser Architectures**:
    - `"auto"` (default): Loads into primary `transformer` (or `transformer_ref` when `MiniMaxH3ModularPipeline` is running `workflow="ref2va"`).
    - `"transformer"`: Explicitly loads into `pipeline.transformer`.
@@ -201,9 +201,9 @@ Following the same raw-output principle as `ImageTaskArgs` (which always writes 
 Placing `video_task` inside `stable-diffusion-task` keeps node/worker integration minimal while cleanly separating image vs. video scheduling on Relay:
 
 1. **Model File Extraction & `RequestedModelCacheConfig` (Extending `ImageTaskArgs`)**:
-   - `base_model` $\to$ `(repo=base_model.name, format="diffusers", revision=base_model.revision)`
-   - Each `components[k]` $\to$ `(repo=source.repo, format=source.format, revision=source.revision, format_kwargs=source.format_kwargs)`
-   - Each `loras[i]` $\to$ `(repo=lora.model, format="lora", revision=lora.revision, format_kwargs={"weight_file_name": lora.weight_file_name})`
+   - `base_model` $\to$ `(repo=base_model.name, format="diffusers", revision=base_model.revision)` in `RequiredModelFileHashes` / `ExecutionModelFileHashes`
+   - Each `components[k]` $\to$ `(repo=source.repo, format=source.format, revision=source.revision, format_kwargs=source.format_kwargs)` in `RequiredModelFileHashes` / `ExecutionModelFileHashes`
+   - Each `loras[i]` $\to$ foreground auxiliary `lora:` entry in `ModelIDs` (downloaded on-demand before inference, matching `ImageTaskArgs.lora`)
    - `RequestedModelCacheConfig` hashes `{"task_kind": "video", "input_mode": <derived>, "dtype": <normalized>, "base_model": ..., "components": ..., "loras": ..., "quantization_config": ...}` (excluding revisions).
 2. **Relay Workload Formula (`VideoUnits`)**:
    - `TaskSize` is fixed to `1` (matching `TaskTypeLLM`), and Relay computes:

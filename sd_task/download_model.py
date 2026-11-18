@@ -25,6 +25,7 @@ def check_and_download_model_by_name(
     external_model_cache_dir = kwargs.pop("external_model_cache_dir")
     proxy = kwargs.pop("proxy")
     variant = kwargs.pop("variant", None)
+    revision = kwargs.pop("revision", None)
 
     if validators.url(model_name):
         return check_and_download_external_model(
@@ -39,6 +40,7 @@ def check_and_download_model_by_name(
             hf_model_cache_dir,
             proxy,
             variant,
+            revision=revision,
         )
 
 
@@ -130,7 +132,21 @@ def check_and_download_hf_pipeline(
 
     def _download(call_args):
         with requests_proxy_session(proxy):
-            DiffusionPipeline.download(model_name, **call_args)
+            try:
+                DiffusionPipeline.download(model_name, **call_args)
+            except EntryNotFoundError:
+                from huggingface_hub import snapshot_download
+
+                hf_hub_download(
+                    model_name,
+                    filename="modular_model_index.json",
+                    **call_args,
+                )
+                snapshot_download(
+                    repo_id=model_name,
+                    ignore_patterns=["*.msgpack", "*.h5", "*.ot"],
+                    **call_args,
+                )
 
     call_args = {"cache_dir": hf_model_cache_dir}
     if revision is not None:
@@ -148,15 +164,18 @@ def check_and_download_hf_model(
     hf_model_cache_dir: str,
     proxy: ProxyConfig | None,
     variant: str | None = None,
+    revision: str | None = None,
 ) -> tuple[str, str]:
     log("Check and download the Huggingface model file: " + model_name)
     weight_file_name = ""
 
     with requests_proxy_session(proxy):
         # download the config file
-        call_args = {
+        call_args: dict = {
             "cache_dir": hf_model_cache_dir,
         }
+        if revision is not None:
+            call_args["revision"] = revision
         if config_loader is not None:
             config_loader(model_name, **call_args)
 
@@ -193,11 +212,13 @@ def check_and_download_hf_model(
 
         if model_file is None and guess_weight_name:
             weight_name = best_guess_weight_name(
-                model_name, file_extension=".safetensors"
+                model_name, file_extension=".safetensors", revision=revision
             )
 
             if weight_name is None:
-                weight_name = best_guess_weight_name(model_name, file_extension=".bin")
+                weight_name = best_guess_weight_name(
+                    model_name, file_extension=".bin", revision=revision
+                )
 
                 if weight_name is None:
                     # To raise the same EntryNotFound Error
@@ -274,10 +295,14 @@ def add_variant(weights_name: str, variant: str | None = None) -> str:
 
 
 def best_guess_weight_name(
-    pretrained_model_name_or_path_or_dict, file_extension=".safetensors"
+    pretrained_model_name_or_path_or_dict,
+    file_extension=".safetensors",
+    revision: str | None = None,
 ) -> str | None:
 
-    files_in_repo = model_info(pretrained_model_name_or_path_or_dict).siblings
+    files_in_repo = model_info(
+        pretrained_model_name_or_path_or_dict, revision=revision
+    ).siblings
     filenames = [f.rfilename for f in files_in_repo]
     return _pick_weight_name(
         filenames, file_extension, pretrained_model_name_or_path_or_dict
@@ -310,7 +335,9 @@ def _pick_weight_name(
     return weight_name
 
 
-def _local_snapshot_files(model_name: str, hf_model_cache_dir: str) -> list[str]:
+def _local_snapshot_files(
+    model_name: str, hf_model_cache_dir: str, revision: str | None = None
+) -> list[str]:
     from huggingface_hub import scan_cache_dir
 
     try:
@@ -323,15 +350,24 @@ def _local_snapshot_files(model_name: str, hf_model_cache_dir: str) -> list[str]
             revisions = sorted(
                 repo.revisions, key=lambda r: r.last_modified or 0, reverse=True
             )
+            if revision is not None:
+                for rev in revisions:
+                    if rev.commit_hash == revision or revision in getattr(
+                        rev, "refs", set()
+                    ):
+                        return [f.file_name for f in rev.files]
+                return []
             for rev in revisions:
                 return [f.file_name for f in rev.files]
     return []
 
 
 def best_guess_local_weight_name(
-    model_name: str, hf_model_cache_dir: str
+    model_name: str, hf_model_cache_dir: str, revision: str | None = None
 ) -> str | None:
-    filenames = _local_snapshot_files(model_name, hf_model_cache_dir)
+    filenames = _local_snapshot_files(
+        model_name, hf_model_cache_dir, revision=revision
+    )
     weight_name = _pick_weight_name(filenames, ".safetensors", model_name)
     if weight_name is None:
         weight_name = _pick_weight_name(filenames, ".bin", model_name)

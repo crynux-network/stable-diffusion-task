@@ -7,6 +7,7 @@ from sd_task.task_args.image_task import (
     ComponentSource,
     ImageTaskArgs,
 )
+from sd_task.task_args.video_task import VideoTaskArgs
 
 from .bitsandbytes import (
     effective_bitsandbytes_identity,
@@ -25,7 +26,7 @@ from .gguf import resolve_gguf_filename
 
 
 def resolve_image_quantization(
-    args: ImageTaskArgs,
+    args: ImageTaskArgs | VideoTaskArgs,
 ) -> dict[str, Any] | None:
     config = args.quantization_config
     if config is None:

@@ -1,13 +1,18 @@
 from __future__ import annotations
 
 import inspect
-from typing import Any
+from typing import Any, Protocol
 
 import torch
 
-from sd_task.task_args.image_task import ImageTaskArgs, QuantizationConfig
+from sd_task.task_args.image_task import QuantizationConfig
 
 from .errors import ImageQuantizationRuntimeUnsupported
+
+
+class _QuantizableTaskArgs(Protocol):
+    dtype: str
+    quantization_config: QuantizationConfig | None
 
 
 def _accepted_params(config_cls: type) -> set[str]:
@@ -40,7 +45,7 @@ def _torch_dtype(name: str) -> torch.dtype:
 
 def _normalize_quant_kwargs(
     quantization_config: QuantizationConfig,
-    args: ImageTaskArgs,
+    args: _QuantizableTaskArgs,
 ) -> dict[str, Any]:
     kwargs = dict(quantization_config.quant_kwargs)
     try:
@@ -73,7 +78,7 @@ def _normalize_quant_kwargs(
 
 def resolve_pipeline_quantization_config(
     quantization_config: QuantizationConfig,
-    args: ImageTaskArgs,
+    args: _QuantizableTaskArgs,
 ) -> Any:
     try:
         import bitsandbytes  # noqa: F401
@@ -101,7 +106,7 @@ def resolve_pipeline_quantization_config(
 
 def effective_bitsandbytes_identity(
     quantization_config: QuantizationConfig,
-    args: ImageTaskArgs,
+    args: _QuantizableTaskArgs,
 ) -> dict[str, Any]:
     kwargs = _normalize_quant_kwargs(quantization_config, args)
     normalized: dict[str, Any] = {}

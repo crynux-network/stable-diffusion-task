@@ -59,12 +59,13 @@ def load_gguf_transformer(
     torch_dtype: torch.dtype,
     local_files_only: bool,
     component_path: str,
+    component_name: str = "transformer",
 ) -> Any:
     if source.format != "gguf":
         raise UnsupportedComponentFormat(source.format)
 
     transformer_cls = component_class_from_pipeline_config(
-        pipeline_config, "transformer"
+        pipeline_config, component_name
     )
     if not hasattr(transformer_cls, "from_single_file"):
         raise TaskInvalid(
@@ -75,7 +76,7 @@ def load_gguf_transformer(
     config_dir = _resolve_component_config_dir(
         base_model_name=base_model_name,
         base_model_revision=base_model_revision,
-        component_name="transformer",
+        component_name=component_name,
         cache_dir=cache_dir,
         local_files_only=local_files_only,
     )

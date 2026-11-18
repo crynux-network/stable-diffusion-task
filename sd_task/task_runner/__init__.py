@@ -2,6 +2,7 @@ from .image_task import run_image_task
 
 __all__ = [
     "run_image_task",
+    "run_video_task",
     "run_finetune_lora_task",
     "run_remove_background_task",
     "run_tagger_task",
@@ -10,6 +11,10 @@ __all__ = [
 
 
 def __getattr__(name: str):
+    if name == "run_video_task":
+        from .video_task import run_video_task
+
+        return run_video_task
     if name == "run_finetune_lora_task":
         from .finetune_task import run_finetune_lora_task
 
