@@ -181,7 +181,6 @@
   "additionalProperties": false,
   "properties": {
     "version": {
-      "default": "3.7.0",
       "minLength": 1,
       "title": "Version",
       "type": "string"
@@ -273,6 +272,7 @@
     }
   },
   "required": [
+    "version",
     "base_model",
     "prompt",
     "task_config"

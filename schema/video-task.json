@@ -1,0 +1,568 @@
+{
+  "$defs": {
+    "AnimateArgs": {
+      "additionalProperties": false,
+      "properties": {
+        "mode": {
+          "default": "animate",
+          "enum": [
+            "animate",
+            "replace"
+          ],
+          "title": "Mode",
+          "type": "string"
+        },
+        "pose_video": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Pose Video"
+        },
+        "face_video": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Face Video"
+        },
+        "background_video": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Background Video"
+        },
+        "prev_segment_conditioning_frames": {
+          "anyOf": [
+            {
+              "exclusiveMinimum": 0,
+              "maximum": 16,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Prev Segment Conditioning Frames"
+        }
+      },
+      "title": "AnimateArgs",
+      "type": "object"
+    },
+    "BaseModelArgs": {
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "minLength": 1,
+          "title": "Name",
+          "type": "string"
+        },
+        "revision": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Revision"
+        }
+      },
+      "required": [
+        "name"
+      ],
+      "title": "BaseModelArgs",
+      "type": "object"
+    },
+    "ComponentSource": {
+      "additionalProperties": false,
+      "properties": {
+        "format": {
+          "minLength": 1,
+          "title": "Format",
+          "type": "string"
+        },
+        "repo": {
+          "minLength": 1,
+          "title": "Repo",
+          "type": "string"
+        },
+        "revision": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Revision"
+        },
+        "format_kwargs": {
+          "additionalProperties": true,
+          "title": "Format Kwargs",
+          "type": "object"
+        }
+      },
+      "required": [
+        "format",
+        "repo"
+      ],
+      "title": "ComponentSource",
+      "type": "object"
+    },
+    "KeyframeCondition": {
+      "additionalProperties": false,
+      "properties": {
+        "image": {
+          "minLength": 1,
+          "title": "Image",
+          "type": "string"
+        },
+        "frame_index": {
+          "title": "Frame Index",
+          "type": "integer"
+        },
+        "strength": {
+          "default": 1.0,
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Strength",
+          "type": "number"
+        }
+      },
+      "required": [
+        "image",
+        "frame_index"
+      ],
+      "title": "KeyframeCondition",
+      "type": "object"
+    },
+    "MediaReference": {
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "enum": [
+            "image",
+            "video",
+            "audio"
+          ],
+          "title": "Type",
+          "type": "string"
+        },
+        "data": {
+          "minLength": 1,
+          "title": "Data",
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "data"
+      ],
+      "title": "MediaReference",
+      "type": "object"
+    },
+    "QuantizationConfig": {
+      "additionalProperties": false,
+      "properties": {
+        "quant_method": {
+          "minLength": 1,
+          "title": "Quant Method",
+          "type": "string"
+        },
+        "components_to_quantize": {
+          "items": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "title": "Components To Quantize",
+          "type": "array"
+        },
+        "quant_kwargs": {
+          "additionalProperties": true,
+          "title": "Quant Kwargs",
+          "type": "object"
+        }
+      },
+      "required": [
+        "quant_method",
+        "components_to_quantize",
+        "quant_kwargs"
+      ],
+      "title": "QuantizationConfig",
+      "type": "object"
+    },
+    "VideoLoraArgs": {
+      "additionalProperties": false,
+      "properties": {
+        "model": {
+          "minLength": 1,
+          "title": "Model",
+          "type": "string"
+        },
+        "revision": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Revision"
+        },
+        "weight_file_name": {
+          "default": "",
+          "title": "Weight File Name",
+          "type": "string"
+        },
+        "weight": {
+          "default": 100,
+          "exclusiveMinimum": 0,
+          "maximum": 100,
+          "title": "Weight",
+          "type": "integer"
+        },
+        "target": {
+          "default": "auto",
+          "enum": [
+            "auto",
+            "transformer",
+            "transformer_2",
+            "transformer_ref",
+            "both"
+          ],
+          "title": "Target",
+          "type": "string"
+        }
+      },
+      "required": [
+        "model"
+      ],
+      "title": "VideoLoraArgs",
+      "type": "object"
+    },
+    "VideoTaskConfig": {
+      "additionalProperties": false,
+      "properties": {
+        "width": {
+          "anyOf": [
+            {
+              "exclusiveMinimum": 0,
+              "maximum": 4096,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Width"
+        },
+        "height": {
+          "anyOf": [
+            {
+              "exclusiveMinimum": 0,
+              "maximum": 4096,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Height"
+        },
+        "num_frames": {
+          "default": 81,
+          "exclusiveMinimum": 0,
+          "maximum": 1025,
+          "title": "Num Frames",
+          "type": "integer"
+        },
+        "fps": {
+          "anyOf": [
+            {
+              "exclusiveMinimum": 0.0,
+              "maximum": 120.0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Fps"
+        },
+        "steps": {
+          "default": 30,
+          "exclusiveMinimum": 0,
+          "maximum": 100,
+          "title": "Steps",
+          "type": "integer"
+        },
+        "seed": {
+          "default": 0,
+          "exclusiveMaximum": 2147483648,
+          "minimum": 0,
+          "title": "Seed",
+          "type": "integer"
+        },
+        "guidance_scale": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Guidance Scale"
+        }
+      },
+      "title": "VideoTaskConfig",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "version": {
+      "minLength": 1,
+      "title": "Version",
+      "type": "string"
+    },
+    "base_model": {
+      "$ref": "#/$defs/BaseModelArgs"
+    },
+    "dtype": {
+      "default": "auto",
+      "enum": [
+        "float16",
+        "bfloat16",
+        "float32",
+        "auto"
+      ],
+      "title": "Dtype",
+      "type": "string"
+    },
+    "prompt": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Prompt"
+    },
+    "negative_prompt": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Negative Prompt"
+    },
+    "image": {
+      "anyOf": [
+        {
+          "minLength": 1,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Image"
+    },
+    "last_image": {
+      "anyOf": [
+        {
+          "minLength": 1,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Last Image"
+    },
+    "keyframes": {
+      "items": {
+        "$ref": "#/$defs/KeyframeCondition"
+      },
+      "title": "Keyframes",
+      "type": "array"
+    },
+    "references": {
+      "items": {
+        "$ref": "#/$defs/MediaReference"
+      },
+      "title": "References",
+      "type": "array"
+    },
+    "video": {
+      "anyOf": [
+        {
+          "minLength": 1,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Video"
+    },
+    "mask_video": {
+      "anyOf": [
+        {
+          "minLength": 1,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Mask Video"
+    },
+    "audio": {
+      "anyOf": [
+        {
+          "minLength": 1,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Audio"
+    },
+    "strength": {
+      "anyOf": [
+        {
+          "maximum": 1,
+          "minimum": 0,
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Strength"
+    },
+    "conditioning_scale": {
+      "anyOf": [
+        {
+          "maximum": 2.0,
+          "minimum": 0.0,
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Conditioning Scale"
+    },
+    "animate": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/AnimateArgs"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "task_config": {
+      "$ref": "#/$defs/VideoTaskConfig"
+    },
+    "pipeline_args": {
+      "anyOf": [
+        {
+          "additionalProperties": true,
+          "type": "object"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Pipeline Args"
+    },
+    "loras": {
+      "items": {
+        "$ref": "#/$defs/VideoLoraArgs"
+      },
+      "title": "Loras",
+      "type": "array"
+    },
+    "components": {
+      "additionalProperties": {
+        "$ref": "#/$defs/ComponentSource"
+      },
+      "title": "Components",
+      "type": "object"
+    },
+    "quantization_config": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/QuantizationConfig"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    }
+  },
+  "required": [
+    "version",
+    "base_model"
+  ],
+  "title": "VideoTaskArgs",
+  "type": "object"
+}

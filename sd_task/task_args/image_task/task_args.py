@@ -65,7 +65,7 @@ class TaskConfig(BaseModel):
 class ImageTaskArgs(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    version: NonEmptyString = "3.7.0"
+    version: NonEmptyString
     base_model: BaseModelArgs
     dtype: Literal["float16", "bfloat16", "float32", "auto"] = "auto"
     prompt: NonEmptyString
