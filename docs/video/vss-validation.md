@@ -71,7 +71,7 @@ To ensure honest nodes stay within tight perceptual distance across runs and acr
 
 ### Decode-After-Encode Rule
 
-The score MUST be computed by decoding `0.mp4` **after** it is written to disk, never from pre-encoded in-memory tensors. Because the node hashes `0.mp4` before `SubmitScore` and uploads the exact same `0.mp4` bytes during `UploadResult`, both Node and Relay inspect the identical compressed bitstream.
+The worker writes only `0.mp4` to `output_dir`; score computation is owned by `crynux-node` (`crynux_server`) via its `imhash` Go extension, matching image and LLM tasks. The score MUST be computed by decoding `0.mp4` **after** it is written to disk, never from pre-encoded in-memory tensors. Because the node hashes `0.mp4` before `SubmitScore` and uploads the exact same `0.mp4` bytes during `UploadResult`, both Node and Relay inspect the identical compressed bitstream using the same Go perceptual hashing functions.
 
 ### Visual Blocks ($K$ Sampled Frame `pHash` Blocks)
 
@@ -94,8 +94,8 @@ t_i = \begin{cases}
 
 For each sampled frame $t_i$:
 
-1. Extract its decoded 8-bit H.264 luminance (`Y` grayscale) plane of size $W \times H$ (avoiding `YUV -> RGB -> Gray` color-matrix rounding differences).
-2. Downsample the luminance plane to a $32 \times 32$ matrix via exact partition box-averaging in `float64` (or the shared canonical `pHash` resizer) and apply the orthonormal 2D DCT-II.
+1. Extract its raw decoded `yuv420p` plane-0 (`Y` luminance) bytes of size $W \times H$ directly without `gray` pixel-format conversion (avoiding `YUV -> RGB -> Gray` color-matrix rounding and `libswscale` limited-to-full range expansion).
+2. Downsample the luminance plane to a $32 \times 32$ matrix via exact partition box-averaging in `float64` and apply the orthonormal 2D DCT-II in Go (`imhash` on Node, `blockchain` on Relay).
 3. Take the top-left $8 \times 8$ low-frequency coefficients (64 values), compute their median $m$, and pack a 64-bit integer (8 bytes, big-endian) where bit $j$ is `1` if coefficient $j > m$ and `0` otherwise.
 
 This yields $K$ 8-byte visual blocks: $V_0, V_1, \dots, V_{K-1}$.
@@ -104,7 +104,7 @@ This yields $K$ 8-byte visual blocks: $V_0, V_1, \dots, V_{K-1}$.
 
 - **Silent video (`0.mp4` has no audio stream)**: No audio block is appended.
 - **Audio-video (`0.mp4` contains an audio stream)**:
-  1. Decode the audio stream to floating-point PCM and average channels to mono.
+  1. Decode the audio stream to native-channel `float64` PCM without `libswresample` channel-matrix downmixing, and compute the per-sample arithmetic mean across channels in Go to produce mono PCM.
   2. Partition the full audio waveform into **32 equal-length contiguous time segments**. Within each segment, compute **32 uniform log-energy frequency bands** via a fixed real DFT/DCT, forming a single $32 \times 32$ time-frequency matrix representing the entire clip's audio envelope.
   3. Run the **same 2D DCT-II $8 \times 8$ median hash** on that $32 \times 32$ matrix to produce one 8-byte (64-bit) audio perceptual hash block $A$.
 

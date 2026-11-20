@@ -33,7 +33,6 @@ from .pipeline import (
     resolve_video_pipeline_spec,
 )
 from .result import VideoTaskResult, resolve_video_execution_dtype
-from .vss_score import compute_video_score
 
 
 def _configure_video_determinism(config: Config, seed: int) -> None:
@@ -227,9 +226,6 @@ def run_video_task(
                     f"The video pipeline returned {num_frames} frames, "
                     f"expected {args.task_config.num_frames}"
                 )
-            score = compute_video_score(
-                output_path, expected_num_frames=args.task_config.num_frames
-            )
             log("The video generation is finished")
     finally:
         if guider_restore and isinstance(pipeline, ModularPipeline):
@@ -240,7 +236,6 @@ def run_video_task(
 
     return VideoTaskResult(
         output_path=output_path,
-        score=score,
         num_frames=num_frames,
         width=width,
         height=height,

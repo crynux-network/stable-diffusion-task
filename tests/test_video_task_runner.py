@@ -6,6 +6,7 @@ from io import BytesIO
 from types import SimpleNamespace
 from typing import Any
 
+import av
 import numpy as np
 import pytest
 import torch
@@ -20,7 +21,6 @@ from sd_task.task_runner.image_task.errors import (
 )
 from sd_task.task_runner.video_task import (
     apply_execution_model_files,
-    compute_video_score,
     run_video_task,
 )
 from sd_task.task_runner.video_task.encode import encode_canonical_mp4
@@ -33,11 +33,6 @@ from sd_task.task_runner.video_task.pipeline import (
     _resolve_modular_workflow,
     load_video_loras,
 )
-from sd_task.task_runner.video_task.vss_score import (
-    hash_audio_pcm,
-    hash_luma_frame,
-    sampled_frame_indices,
-)
 from sd_task.utils import encode_image_dataurl
 
 
@@ -46,36 +41,7 @@ def _png_data_url(width: int = 64, height: int = 64, color: tuple[int, int, int]
     return encode_image_dataurl(img)
 
 
-def test_sampled_frame_indices():
-    assert sampled_frame_indices(1) == [0]
-    assert sampled_frame_indices(5) == [0, 1, 2, 3, 4]
-    assert sampled_frame_indices(81) == [0, 11, 22, 34, 45, 57, 68, 80]
-    assert sampled_frame_indices(121) == [0, 17, 34, 51, 68, 85, 102, 120]
-
-
-def test_deterministic_luma_and_audio_hashes():
-    yy, xx = np.meshgrid(
-        np.arange(48, dtype=np.int64),
-        np.arange(64, dtype=np.int64),
-        indexing="ij",
-    )
-    luma = ((xx * 3 + yy * 5) % 256).astype(np.uint8)
-    h1 = hash_luma_frame(luma)
-    h2 = hash_luma_frame(luma.copy())
-    assert len(h1) == 8
-    assert h1 == h2
-    assert h1.hex() == "c097384b5a770de9"
-
-    t = np.arange(24000, dtype=np.float64) / 24000.0
-    chirp = 0.6 * np.sin(2.0 * np.pi * (220.0 * t + 400.0 * t * t))
-    audio_hash = hash_audio_pcm(chirp)
-    silent_hash = hash_audio_pcm(np.zeros(24000, dtype=np.float64))
-    assert len(audio_hash) == 8
-    assert audio_hash.hex() == "703f073a97dd8087"
-    assert audio_hash != silent_hash
-
-
-def test_encode_and_compute_video_score_silent_and_audio(tmp_path):
+def test_encode_canonical_mp4_deterministic_silent_and_audio(tmp_path):
     num_frames, height, width = 17, 64, 96
     frames = np.zeros((num_frames, height, width, 3), dtype=np.uint8)
     for idx in range(num_frames):
@@ -87,16 +53,18 @@ def test_encode_and_compute_video_score_silent_and_audio(tmp_path):
 
     silent_mp4 = str(tmp_path / "silent_0.mp4")
     silent_mp4_repeat = str(tmp_path / "silent_1.mp4")
-    encode_canonical_mp4(frames, fps=24.0, output_path=silent_mp4)
-    encode_canonical_mp4(frames, fps=24.0, output_path=silent_mp4_repeat)
+    n1, w1, h1, a1 = encode_canonical_mp4(frames, fps=24.0, output_path=silent_mp4)
+    n2, w2, h2, a2 = encode_canonical_mp4(frames, fps=24.0, output_path=silent_mp4_repeat)
 
-    score_a = compute_video_score(silent_mp4, expected_num_frames=17)
-    score_b = compute_video_score(silent_mp4_repeat, expected_num_frames=17)
-    assert len(score_a) == 64
-    assert score_a == score_b
+    assert (n1, w1, h1, a1) == (17, 96, 64, False)
+    assert (n2, w2, h2, a2) == (17, 96, 64, False)
 
-    with pytest.raises(RuntimeError, match="expected num_frames"):
-        compute_video_score(silent_mp4, expected_num_frames=21)
+    with av.open(silent_mp4) as c1, av.open(silent_mp4_repeat) as c2:
+        assert len(c1.streams.audio) == 0
+        v1 = [bytes(f.planes[0]) for f in c1.decode(c1.streams.video[0])]
+        v2 = [bytes(f.planes[0]) for f in c2.decode(c2.streams.video[0])]
+        assert len(v1) == 17
+        assert v1 == v2
 
     sample_rate = 24000
     t = np.arange(sample_rate, dtype=np.float32) / float(sample_rate)
@@ -108,16 +76,18 @@ def test_encode_and_compute_video_score_silent_and_audio(tmp_path):
         axis=0,
     )
     av_mp4 = str(tmp_path / "av_0.mp4")
-    encode_canonical_mp4(
+    n3, w3, h3, a3 = encode_canonical_mp4(
         frames,
         fps=24.0,
         output_path=av_mp4,
         audio=torch.from_numpy(stereo),
         audio_sample_rate=sample_rate,
     )
-    av_score = compute_video_score(av_mp4, expected_num_frames=17)
-    assert len(av_score) == 72
-    assert av_score[:64] == score_a
+    assert (n3, w3, h3, a3) == (17, 96, 64, True)
+    with av.open(av_mp4) as c3:
+        assert len(c3.streams.video) == 1
+        assert len(c3.streams.audio) == 1
+        assert len(c3.streams.audio[0].layout.channels) == 2
 
 
 def test_apply_execution_model_files_pins_base_and_components():
@@ -457,12 +427,14 @@ def test_run_video_task_end_to_end_with_stub_pipeline(tmp_path, monkeypatch):
 
     assert dummy_instance.vae.tiling_enabled is True
     assert os.path.isfile(res1.output_path)
+    assert os.path.isfile(res2.output_path)
     assert res1.execution_dtype == "bfloat16"
     assert res1.num_frames == 9
     assert res1.has_audio is False
-    assert len(res1.score) == 64
-    assert res1.score == res2.score
-    assert res1.score_hex.startswith("0x") and len(res1.score_hex) == 130
+    with av.open(res1.output_path) as c1, av.open(res2.output_path) as c2:
+        p1 = [bytes(f.planes[0]) for f in c1.decode(c1.streams.video[0])]
+        p2 = [bytes(f.planes[0]) for f in c2.decode(c2.streams.video[0])]
+        assert p1 == p2
 
     bad_passthrough = args.model_copy(
         update={"pipeline_args": {"nonexistent_param": 123}}

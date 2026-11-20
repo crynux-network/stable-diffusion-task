@@ -63,7 +63,6 @@ result = run_video_task(args, output_dir=str(out / "video_wan22_ti2v5b_i2v_bnb")
 dest = out / "video_wan22_ti2v5b_i2v_bnb.mp4"
 copy2(result.output_path, dest)
 print("output=", dest)
-print("score=", result.score_hex)
 print("frames=", result.num_frames, "fps=", result.fps)
 print("size=", result.width, "x", result.height)
 print("execution_dtype=", result.execution_dtype)

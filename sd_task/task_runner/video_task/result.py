@@ -12,7 +12,6 @@ from sd_task.task_runner.image_task.result import (
 @dataclass(frozen=True)
 class VideoTaskResult:
     output_path: str
-    score: bytes
     num_frames: int
     width: int
     height: int
@@ -20,10 +19,6 @@ class VideoTaskResult:
     has_audio: bool
     execution_dtype: str
     execution_quantization: dict[str, Any] | None = None
-
-    @property
-    def score_hex(self) -> str:
-        return "0x" + self.score.hex()
 
 
 def resolve_video_execution_dtype(
